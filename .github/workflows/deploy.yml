@@ -30,8 +30,7 @@ jobs:
 
       - name: Export App to docs/
         run: |
-          # Replace 'app_folder_name' with the name of the folder containing your app.R
-          shinylive::export(appdir = "app_folder_name", destdir = "docs")
+          shinylive::export(appdir = "myapp", destdir = "docs")
         shell: Rscript {0}
 
       - name: Disable Jekyll
