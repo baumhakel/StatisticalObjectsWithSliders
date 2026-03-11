@@ -1,0 +1,44 @@
+name: Deploy Shinylive App
+
+on:
+  push:
+    branches: [main] # Change this if your default branch is different
+
+jobs:
+  build-deploy:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Setup R
+        uses: r-lib/actions/setup-r@v2
+        with:
+          use-public-rspm: true
+
+      - name: Install System Dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y libcurl4-openssl-dev
+
+      - name: Install R Packages
+        run: |
+          install.packages(c("shinylive", "shiny", "ggplot2", "bslib", "munsell", "commonmark", "gld"))
+        shell: Rscript {0}
+
+      - name: Export App to docs/
+        run: |
+          # Replace 'app_folder_name' with the name of the folder containing your app.R
+          shinylive::export(appdir = "app_folder_name", destdir = "docs")
+        shell: Rscript {0}
+
+      - name: Disable Jekyll
+        run: touch docs/.nojekyll
+
+      - name: Commit and Push Changes
+        uses: stefanzweifel/git-auto-commit-action@v5
+        with:
+          commit_message: "Auto-deploy Shinylive app to docs/"
+          file_pattern: 'docs/*'
