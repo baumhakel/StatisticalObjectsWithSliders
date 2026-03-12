@@ -70,6 +70,7 @@ server <- function(input, output, session) {
 ui <- fluidPage(
   theme = bs_theme(version = 5, bootswatch = "flatly"),
   titlePanel("Statistical Objects with Sliders"),
+  title = "SOS",
   
   # Dynamic UI Container
   uiOutput("main_content")
