@@ -73,28 +73,42 @@ Data consists of 19 fixed points and 1 interactive point (#20).
 
 Watch out: The boxplot uses a specific definition of quantiles that can differ from the one used to color the points, which may result in outliers not showing up correctly.
 ",
-  pearson = "
-Data is generated using the Pearson system to match specific moments.
-* **Sliders:** (! slider ranges change depending on the values chosen for the other sliders !)
-    * **Mean** and **Standard Deviation** to set the location and scale.
-    * **Skewness** for asymmetry 
-    * **Kurtosis** for tail heaviness.
-    * **Sample size** to see how the drawings change as sample size increases.
-* **Top Row:** 
-    * The resulting probability density function with mean, median and mode of the distribution.
-    * The sample histogram
-    * The sample Boxplot
-* **Bottom Row:** 
-    * The ECDF with the theoretical CDF overlayed.
-    * A Q-Q Plot comparing the distribution against a Normal distribution.
-    * The sample mean, variance, skewness and kurtosis values.
-* **Observations:** 
-    * When Skewness is > 0, observe right skew in density, longer right tail in histogram, and more outliers on the right in the boxplot.
-    * When Skewness is < 0, observe left skew in density, longer left tail in histogram, and more outliers on the left in the boxplot.
-    * When Skewness is not 0 or Kurtosis is far from 3 (sample Kurtosis > 4 or < 2), the Q-Q plot deviates from the straight line, showing the data is non-normal.
-    * When Kurtosis is > 3, observe more outliers in the boxplot.
+  skew = "
+This module uses a **Standardized Gamma Distribution (Pearson Type III)** to isolate the effect of asymmetry while keeping the center and spread constant.
+
+* **The Logic:**
+    * The slider controls the **Skewness (gamma)**. 
+    * To ensure you only see the effect of skew, the distribution is automatically shifted and scaled so the **Mean is always 0** and the **Variance is always 1**.
+* **Visualizing Asymmetry:**
+    * **Positive Skew (gamma > 0):** The 'tail' pulls to the right. Notice how the **Mode** (the peak) stays to the left of the **Mean** (red line).
+    * **Normal Limit:** As Skewness approaches 0, the Gamma distribution begins to resemble the Normal distribution.
+* **Observations:**
+    * **Boxplot:** Watch the 'whiskers.' In a skewed distribution, one whisker becomes longer, and outliers cluster on one side.
+    * **Q-Q Plot:** A 'curved' Q-Q plot is the classic signature of skewness. The data points will depart from the straight line at both ends in the same direction (forming a U-shape or inverted U-shape).
 ",
-  mle = "
+  kurt = "
+This module uses a **Scaled Student’s t Distribution (Pearson Type VII)** to demonstrate tail-heaviness (Kurtosis) independently of skewness.
+
+* **The Logic:**
+    * The slider controls **Kurtosis (kappa)**. 
+    * We use the Student's t because it is naturally symmetric (Skewness = 0) but allows us to move from a 'Normal' tail to 'Fat' tails by changing the degrees of freedom.
+    * The data is scaled so the **Variance remains 1**, allowing you to see that Kurtosis is about the *distribution* of variance, not the amount of it.
+* **Visualizing 'Fat Tails':**
+    * **High Kurtosis (kappa > 3):** Compare to the normal distribution (grey lines): Observe how the peak becomes pointier and the 'shoulders' of the distribution deplete to push more probability mass into the extreme tails.
+* **Observations:**
+    * **Boxplot:** High kurtosis is the 'outlier generator.' You will see many more extreme values than you would in a Normal distribution.
+    * **Q-Q Plot:** An 'S-shaped' deviation from the straight line indicates that the tails of your sample are heavier (or thinner) than the Normal distribution.
+",
+  mle_norm1 = "
+Visualizes the Maximum Likelihood Estimation for a Normal Distribution by displaying the density corresponding to current parameters and the Log-Likelihood curve.
+* **Sliders:** Manually adjust **mu** (mean) to fit the data. 
+* **Top Plot:** The density curve overlaying the data. Vertical blue lines represent the likelihood of each individual point, which get combined by multiplication to form the value of the likelihood function.
+* **Bottom Row:** The Likelihood and Log-Likelihood curves depending on **mu**. The red point indicates the current value of mu.
+* **Observations:** 
+    * The goal is to maximize the Likelihood by shifting the density curve in the top plot to better fit the data by adjusting mu and sigma (the blue lines should be maximally long).
+    * Maximization of the Likelihood occurs occurs when the peak of the curves in the bottom plots are reached. 
+",
+  mle_norm2 = "
 Visualizes the Maximum Likelihood Estimation for a Normal Distribution by displaying the density corresponding to current parameters and the Log-Likelihood curve.
 * **Sliders:** Manually adjust **mu** (mean) and **sigma** (std. deviation) to fit the data. 
 * **Top Plot:** The density curve overlaying the data. Vertical blue lines represent the likelihood of each individual point, which get combined by multiplication to form the value of the likelihood function.
@@ -104,6 +118,17 @@ Visualizes the Maximum Likelihood Estimation for a Normal Distribution by displa
     * The goal is to maximize the Likelihood by shifting the density curve in the top plot to better fit the data by adjusting mu and sigma (the blue lines should be maximally long).
     * Maximization of the Likelihood occurs occurs when the peak of the curves in the bottom plots are reached. 
     * Changing **mu** or **sigma** will change the Likelihood and Log-Likelihood curves for the other parameter, but the maximum will always be at the same point because maximization is independent. 
+",
+  mle_bern = "
+Visualizes the Maximum Likelihood Estimation for a Bernoulli Distribution (Success/Failure) by displaying how the choice of 'p' affects the probability of the observed sample.
+* **Sliders:** Adjust **Proposed p** to change your estimate of the probability of success (x=1).
+* **Top Plot:** 
+    * The black dots represent your sample (around 0 for failure, around 1 for success) 
+    * The red step function represents the probability mass: the height at 0 is 1-p and the height at 1 is p.
+    * Blue dashed lines represent the 'contribution' of each point to the total likelihood.The Likelihood is the product of line lengths, which should be as large as possible.
+* **Bottom Row:** The Likelihood and Log-Likelihood curves. The red dot moves as you adjust the slider.
+* **Observations:** The Maximum Likelihood Estimate (MLE) for p is simply the proportion of 1s in your sample.
+    * When the red step function matches the 'ratio' of the stacked points, the blue lines are collectively as long as possible, and the likelihood is maximized.
 ",
   ci = "
 Simulation of 100 independent confidence intervals for the mean (true mean = 0) based on normally distributed data.

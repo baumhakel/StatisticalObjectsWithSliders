@@ -36,7 +36,9 @@ page_ui <- list(
                                 actionButton("go_spread", "Spread [D3]", class="btn-outline-primary"))),
         card(card_header("Histograms"), p("Explore binning effects"), actionButton("go_hist", "Histogram & Binning [D6]", class="btn-primary w-100")),
         card(card_header("Boxplots"), p("Explore IQR, whiskers, outliers"), actionButton("go_boxplot", "Boxplot [D7]", class="btn-primary w-100")),
-        card(card_header("Distributional Shapes"), p("Manipulate Pearson family"), actionButton("go_pearson", "Pearson Distributions [D8]", class="btn-primary w-100"))
+        card(card_header("Distributional Shapes"), p("Manipulate Skew and Kurtosis"), 
+             layout_column_wrap(width = 1/2, actionButton("go_skew", "Skew [D8]", class="btn-outline-primary"),
+                                actionButton("go_kurt", "Kurtosis [D8]", class="btn-outline-primary")))
       ),
       
       # Section 2
@@ -50,9 +52,14 @@ page_ui <- list(
       # Section 3
       h4("3. Point Estimators", class = "mt-5 mb-3 border-bottom"),
       layout_column_wrap(
-        width = 1/2,
-        card(card_header("MLE"), p("Maximize joint likelihood"), actionButton("go_mle", "MLE Dashboard", class="btn-success w-100")),
-        card(card_header("Confidence Intervals"), p("Long-run CI coverage"), actionButton("go_ci", "Confidence Intervals", class="btn-success w-100"))
+        width = 1/3,
+        card(card_header("MLEs for Normal Distribution"), p("Explore the concept of likelihood"), 
+             layout_column_wrap(width = 1/2, actionButton("go_norm1", "MLE for mu [D9]", class="btn-outline-primary"),
+                                actionButton("go_norm2", "MLE for mu and sigma [D11]", class="btn-outline-primary"))),
+        card(card_header("MLEs for Bernoulli Distribution"), p("Explore the concept of likelihood"),
+             actionButton("go_bern", "MLE for p [D10]", class="btn-outline-primary")),
+        card(card_header("Confidence Intervals"), p("Explore how coverage works and how parameters influence the size of confidence intervals."), 
+             actionButton("go_ci", "Confidence Intervals [D12]", class="btn-success w-100"))
       )
     )
   },
@@ -115,16 +122,41 @@ page_ui <- list(
       )
     )
   },
-  mle = function() {
+  mle_norm1 = function() {
     layout_sidebar(
       sidebar = sidebar(
         actionButton("go_back", "← Back to Home", class="btn-secondary mb-3"),
         hr(),
-        sliderInput("mu_guess", "Proposed Mean (μ):", min = -3, max = 3, value = 0, step = 0.1),
-        sliderInput("sd_guess", "Proposed SD (σ):", min = 0.1, max = 4, value = 1, step = 0.1),
+        sliderInput("mu_guess_n1", "Proposed Mean (μ):", min = -3, max = 3, value = 0, step = 0.01),
+        actionButton("jump_to_mle_n1", "Jump to MLE", class = "btn-info w-100 mt-2"),
+        actionButton("resample_mle_n1", "New Random Data", class = "btn-warning w-100")
+      ),
+      guide_accordion("mle_norm1"),
+      layout_column_wrap(
+        width = 1,
+        card(
+          card_header("Visual Likelihood: Data & Contributions"),
+          plotOutput("mleDataPlot_n1", height = "350px")
+        ),
+        layout_column_wrap(
+          width = 1/2,
+          card(card_header("Likelihood"), plotOutput("likPlotMu_n1", height = "250px")),
+          card(card_header("Log-Likelihood"), plotOutput("logLikPlotMu_n1", height = "250px"))
+        )
+      )
+    )
+  },
+  mle_norm2 = function() {
+    layout_sidebar(
+      sidebar = sidebar(
+        actionButton("go_back", "← Back to Home", class="btn-secondary mb-3"),
+        hr(),
+        sliderInput("mu_guess", "Proposed Mean (μ):", min = -3, max = 3, value = 0, step = 0.01),
+        sliderInput("sd_guess", "Proposed SD (σ):", min = 0.1, max = 4, value = 1, step = 0.01),
+        actionButton("jump_to_mle", "Jump to MLE", class = "btn-info w-100 mt-2"),
         actionButton("resample_mle", "New Random Data", class = "btn-warning w-100")
       ),
-      guide_accordion("mle"),
+      guide_accordion("mle_norm2"),
       layout_column_wrap(
         width = 1,
         card(
@@ -142,7 +174,31 @@ page_ui <- list(
       )
     )
   },
-  pearson = function() {
+  mle_bern = function() {
+    layout_sidebar(
+      sidebar = sidebar(
+        actionButton("go_back", "← Back to Home", class="btn-secondary mb-3"),
+        hr(),
+        sliderInput("p_guess", "Proposed p:", min = 0.01, max = 0.99, value = 0.6, step = 0.01),
+        actionButton("jump_to_mle_bern", "Jump to MLE", class = "btn-info w-100 mt-2"),
+        actionButton("resample_bern", "New Random Data (p=0.3)", class = "btn-warning w-100")
+      ),
+      guide_accordion("mle_bern"),
+      layout_column_wrap(
+        width = 1,
+        card(
+          card_header("Visual Likelihood: Outcomes & PMF"),
+          plotOutput("mleDataPlot_bern", height = "350px")
+        ),
+        layout_column_wrap(
+          width = 1/2,
+          card(card_header("Likelihood"), plotOutput("likPlotP_bern", height = "250px")),
+          card(card_header("Log-Likelihood"), plotOutput("logLikPlotP_bern", height = "250px"))
+        )
+      )
+    )
+  },
+  moments = function() {
     layout_sidebar(
       sidebar = sidebar(
         actionButton("go_back", "← Back", class="btn-secondary mb-3"),
@@ -154,7 +210,7 @@ page_ui <- list(
         sliderInput("p_n", "Sample Size:", 20, 1000, 200),
         actionButton("resample_p", "New Sample", class="btn-warning w-100")
       ),
-      guide_accordion("pearson"),
+      guide_accordion("moments"),
       layout_column_wrap(
         width = 1/3,
         card(card_header("Density & Theory"), plotOutput("p_dens")),
@@ -163,6 +219,48 @@ page_ui <- list(
         card(card_header("ECDF"), plotOutput("p_ecdf")),
         card(card_header("Normal QQ-Plot"), plotOutput("p_qq")),
         card(card_header("Summary Stats"), tableOutput("p_sum"))
+      )
+    )
+  },
+  skew_ui = function() {
+    layout_sidebar(
+      sidebar = sidebar(
+        actionButton("go_back", "← Back", class="btn-secondary mb-3"),
+        sliderInput("s_skew", "Skewness (γ):", 0.1, 2, 0.5, step = 0.1),
+        hr(),
+        sliderInput("s_n", "Sample Size:", 20, 1000, 200),
+        actionButton("resample_s", "New Sample", class="btn-warning w-100")
+      ),
+      guide_accordion("skew"),
+      layout_column_wrap(
+        width = 1/3,
+        card(card_header("Density (Shifted Gamma)"), plotOutput("s_dens")),
+        card(card_header("ECDF"), plotOutput("s_ecdf")),
+        card(card_header("Summary Stats"), tableOutput("s_sum")),
+        card(card_header("Histogram"), plotOutput("s_hist")),
+        card(card_header("Boxplot"), plotOutput("s_box")),
+        card(card_header("Normal QQ-Plot"), plotOutput("s_qq"))
+      )
+    )
+  },
+  kurt_ui = function() {
+    layout_sidebar(
+      sidebar = sidebar(
+        actionButton("go_back", "← Back", class="btn-secondary mb-3"),
+        sliderInput("k_kurt", "Kurtosis (κ):", 3.1, 10, 3.5, step = 0.1),
+        hr(),
+        sliderInput("k_n", "Sample Size:", 20, 1000, 200),
+        actionButton("resample_k", "New Sample", class="btn-warning w-100")
+      ),
+      guide_accordion("kurt"),
+      layout_column_wrap(
+        width = 1/3,
+        card(card_header("Density (Scaled t)"), plotOutput("k_dens")),
+        card(card_header("ECDF"), plotOutput("k_ecdf")),
+        card(card_header("Summary Stats"), tableOutput("k_sum")),
+        card(card_header("Histogram"), plotOutput("k_hist")),
+        card(card_header("Boxplot"), plotOutput("k_box")),
+        card(card_header("Normal QQ-Plot"), plotOutput("k_qq"))
       )
     )
   },

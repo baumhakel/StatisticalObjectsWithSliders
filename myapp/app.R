@@ -6,23 +6,16 @@
 #   oder: "Run App" Button in RStudio (oben rechts im Script-Editor) 
 
 
-#liblist <- c("shiny", "ggplot2", "bslib", "PearsonDS", "munsell", "markdown")
-#lapply(liblist, function(pkg) {
-#  if (!require(pkg, character.only = TRUE)) {
-#    install.packages(pkg)
-#    library(pkg, character.only = TRUE)
-#  }
-#})
-
+# to run locally, make sure all packages are installed
 suppressPackageStartupMessages({
 library("shiny")
 library("ggplot2")
 library("bslib")
-#library("PearsonDS")
 library("munsell")
 library("markdown")
 })
 
+# to run locally, make sure these are in the same directory as app.R
 source("app_guides.R", local = TRUE)
 source("app_pageui.R", local = TRUE)
 source("app_logic.R", local = TRUE)
@@ -36,9 +29,16 @@ server <- function(input, output, session) {
   # --- Navigation mapping ---
   nav_buttons <- list(
     go_hist = "histogram", go_lln = "lln", go_ecdf = "ecdf_conv", 
-    go_mle = "mle", go_location = "location", #go_pearson = "pearson", 
-    go_spread = "spread", go_quant = "quantiles", go_ci = "ci",
-    go_boxplot = "boxplot", go_back = "home"
+    go_location = "location", go_kurt = "kurt_ui", 
+    go_skew = "skew_ui", go_spread = "spread", go_quant = "quantiles", 
+    go_ci = "ci", go_boxplot = "boxplot", go_back = "home",
+    go_norm1 = "mle_norm1", go_norm2 = "mle_norm2", go_bern = "mle_bern"
+  )
+  
+  call_functions <- list(
+    histogram = hist_logic, lln = lln_logic, ecdf_conv = ecdf_logic, location = location_logic,
+    kurt_ui = kurt_logic, skew_ui = skew_logic, spread = spread_logic, quantiles = quantile_logic, ci = ci_logic, boxplot = boxplot_logic,
+    mle_norm1 = mle_norm1_logic, mle_norm2 = mle_norm2_logic, mle_bern = mle_bern_logic
   )
   
   lapply(names(nav_buttons), function(btn) {
@@ -56,12 +56,14 @@ server <- function(input, output, session) {
     page_ui[[page]]()
   })
   
-  # --- Call all logic modules ---
-  lapply(list(
-    lln_logic, hist_logic, ecdf_logic, mle_logic, # pearson_logic,
-    spread_logic, location_logic, quantile_logic, ci_logic, boxplot_logic
-  ), function(f) f(input, output, session))
   
+  # # --- Call all logic modules ---
+  lapply(list(
+    lln_logic, hist_logic, ecdf_logic, kurt_logic, skew_logic,
+    spread_logic, location_logic, quantile_logic, ci_logic, boxplot_logic,
+    mle_norm1_logic, mle_norm2_logic, mle_bern_logic
+  ), function(f) f(input, output, session))
+
 }
 
 # --- Base UI with placeholder for dynamic content ---
