@@ -54,8 +54,8 @@ page_ui <- list(
       layout_column_wrap(
         width = 1/3,
         card(card_header("MLEs for Normal Distribution"), p("Explore the concept of likelihood"), 
-             layout_column_wrap(width = 1/2, actionButton("go_norm1", "MLE for mu [D9]", class="btn-outline-primary"),
-                                actionButton("go_norm2", "MLE for mu and sigma [D11]", class="btn-outline-primary"))),
+             layout_column_wrap(width = 1/2, actionButton("go_norm1", "MLE for μ [D9]", class="btn-outline-primary"),
+                                actionButton("go_norm2", "MLE for μ and σ [D11]", class="btn-outline-primary"))),
         card(card_header("MLEs for Bernoulli Distribution"), p("Explore the concept of likelihood"),
              actionButton("go_bern", "MLE for p [D10]", class="btn-outline-primary")),
         card(card_header("Confidence Intervals"), p("Explore how coverage works and how parameters influence the size of confidence intervals."), 
@@ -195,30 +195,6 @@ page_ui <- list(
           card(card_header("Likelihood"), plotOutput("likPlotP_bern", height = "250px")),
           card(card_header("Log-Likelihood"), plotOutput("logLikPlotP_bern", height = "250px"))
         )
-      )
-    )
-  },
-  moments = function() {
-    layout_sidebar(
-      sidebar = sidebar(
-        actionButton("go_back", "← Back", class="btn-secondary mb-3"),
-        sliderInput("p_mu", "Mean (μ):", -2, 2, 0, step = 0.1),
-        sliderInput("p_var", "Variance (σ²):", 0.5, 5, 1, step = 0.1),
-        sliderInput("p_skew", "Skewness (γ):", -2, 2, 0, step = 0.1),
-        sliderInput("p_kurt", "Kurtosis (κ):", 1.1, 10, 3, step = 0.1),
-        hr(),
-        sliderInput("p_n", "Sample Size:", 20, 1000, 200),
-        actionButton("resample_p", "New Sample", class="btn-warning w-100")
-      ),
-      guide_accordion("moments"),
-      layout_column_wrap(
-        width = 1/3,
-        card(card_header("Density & Theory"), plotOutput("p_dens")),
-        card(card_header("Histogram"), plotOutput("p_hist")),
-        card(card_header("Boxplot"), plotOutput("p_box")),
-        card(card_header("ECDF"), plotOutput("p_ecdf")),
-        card(card_header("Normal QQ-Plot"), plotOutput("p_qq")),
-        card(card_header("Summary Stats"), tableOutput("p_sum"))
       )
     )
   },
