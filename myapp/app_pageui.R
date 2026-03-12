@@ -54,10 +54,10 @@ page_ui <- list(
       layout_column_wrap(
         width = 1/3,
         card(card_header("MLEs for Normal Distribution"), p("Explore the concept of likelihood"), 
-             layout_column_wrap(width = 1/2, actionButton("go_norm1", "MLE for μ [D9]", class="btn-outline-primary"),
-                                actionButton("go_norm2", "MLE for μ and σ [D11]", class="btn-outline-primary"))),
+             layout_column_wrap(width = 1/2, actionButton("go_norm1", "MLE for μ [D9]", class="btn-outline-success"),
+                                actionButton("go_norm2", "MLE for μ and σ [D11]", class="btn-outline-success"))),
         card(card_header("MLEs for Bernoulli Distribution"), p("Explore the concept of likelihood"),
-             actionButton("go_bern", "MLE for p [D10]", class="btn-outline-primary")),
+             actionButton("go_bern", "MLE for p [D10]", class="btn-success w-100")),
         card(card_header("Confidence Intervals"), p("Explore how coverage works and how parameters influence the size of confidence intervals."), 
              actionButton("go_ci", "Confidence Intervals [D12]", class="btn-success w-100"))
       )
