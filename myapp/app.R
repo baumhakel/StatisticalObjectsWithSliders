@@ -32,13 +32,16 @@ server <- function(input, output, session) {
     go_location = "location", go_kurt = "kurt_ui", 
     go_skew = "skew_ui", go_spread = "spread", go_quant = "quantiles", 
     go_ci = "ci", go_boxplot = "boxplot", go_back = "home",
-    go_norm1 = "mle_norm1", go_norm2 = "mle_norm2", go_bern = "mle_bern"
+    go_norm1 = "mle_norm1", go_norm2 = "mle_norm2", go_bern = "mle_bern",
+    go_ztest = "ztest", go_ttest = "ttest", go_pval = "pval", 
+    go_test_ci = "testci", go_twosample = "twosample"
   )
   
   call_functions <- list(
     histogram = hist_logic, lln = lln_logic, ecdf_conv = ecdf_logic, location = location_logic,
     kurt_ui = kurt_logic, skew_ui = skew_logic, spread = spread_logic, quantiles = quantile_logic, ci = ci_logic, boxplot = boxplot_logic,
-    mle_norm1 = mle_norm1_logic, mle_norm2 = mle_norm2_logic, mle_bern = mle_bern_logic
+    mle_norm1 = mle_norm1_logic, mle_norm2 = mle_norm2_logic, mle_bern = mle_bern_logic,
+    ztest = ztest_logic, ttest = ttest_logic, pval = pval_logic, twosample = twosample_logic, testci = testci_logic
   )
   
   lapply(names(nav_buttons), function(btn) {
@@ -58,11 +61,7 @@ server <- function(input, output, session) {
   
   
   # # --- Call all logic modules ---
-  lapply(list(
-    lln_logic, hist_logic, ecdf_logic, kurt_logic, skew_logic,
-    spread_logic, location_logic, quantile_logic, ci_logic, boxplot_logic,
-    mle_norm1_logic, mle_norm2_logic, mle_bern_logic
-  ), function(f) f(input, output, session))
+  lapply(call_functions, function(f) f(input, output, session))
 
 }
 

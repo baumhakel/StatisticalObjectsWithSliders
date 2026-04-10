@@ -1575,3 +1575,718 @@ ci_logic <- function(input, output, session) {
   
 }
 
+
+# chapter 3
+# add ztest = ztest_logic, ttest = ttest_logic, pval = pval_logic, twosample = twosample_logic
+
+
+ztest_logic <- function(input, output, session) {
+  
+  # --- Master data generation based on True Mu ---
+  z_master_data <- reactiveVal(matrix(rnorm(100 * 100), nrow = 100))
+  z_master_jitter <- reactiveVal(jitter(rep(0, 100), amount = 0.3))
+  
+  observeEvent(input$resample_z, ignoreNULL = FALSE, {
+    # Generate standard normal and shift by true mu later for reactivity
+    z_master_data(matrix(rnorm(100 * 100), nrow = 100))
+    z_master_jitter(jitter(rep(0, 100), amount = 0.3))
+  })
+  
+  # --- Compute Test Statistics and Rejection ---
+  test_results_df <- reactive({
+    # Shift standard normal data by the user-defined true mean
+    raw_data <- z_master_data() + input$z_true_mu
+    n <- input$z_n_obs
+    alpha <- input$z_alpha
+    num_to_show <- input$z_show_num
+    
+    subset_data <- raw_data[1:num_to_show, 1:n, drop = FALSE]
+    means <- rowMeans(subset_data)
+    se <- 1 / sqrt(n) # Sigma is known as 1
+    
+    # Calculate Critical Values in terms of X-bar (the "Raw" scale)
+    if (input$z_alt == "two.sided") {
+      crit_val <- qnorm(1 - alpha/2) * se
+      lower_crit <- -crit_val
+      upper_crit <- crit_val
+      rejected <- means < lower_crit | means > upper_crit
+    } else if (input$z_alt == "greater") {
+      lower_crit <- -Inf
+      upper_crit <- qnorm(1 - alpha) * se
+      rejected <- means > upper_crit
+    } else {
+      lower_crit <- qnorm(alpha) * se
+      upper_crit = Inf
+      rejected <- means < lower_crit
+    }
+    
+    data.frame(
+      id = 1:num_to_show,
+      mean = means,
+      rejected = rejected,
+      lower_crit = lower_crit,
+      upper_crit = upper_crit
+    )
+  })
+  
+  # --- Main Rejection Plot ---
+  output$z_plot <- renderPlot({
+    df <- test_results_df()
+    n_total <- nrow(df)
+    n_rej <- sum(df$rejected)
+    
+    par(mar = c(4, 4, 3, 1))
+    
+    plot(0, 0, type = "n", xlim = c(-3, 3), ylim = c(0.5, n_total + 0.5),
+         xlab = expression(paste("Sample Mean (", bar(x), ")")), ylab = "Trial ID",
+         main = paste0("Rejection Rate: ", n_rej, "/", n_total, 
+                       " (", round(n_rej/n_total*100), "%) | H0: mu=0"))
+    
+    # Draw the Critical Regions (Red Rectangles)
+    se <- 1 / sqrt(input$z_n_obs)
+    alpha <- input$z_alpha
+    
+    ylims <- par("usr")[3:4]
+    xlims <- par("usr")[1:2]
+    
+    if (input$z_alt == "two.sided" || input$z_alt == "less") {
+      l_bound <- if(input$z_alt == "two.sided") qnorm(alpha/2)*se else qnorm(alpha)*se
+      rect(-4, 0.5, l_bound, n_total + 0.5, col = rgb(1, 0, 0, 0.1), border = NA)
+      abline(v = l_bound, col = "red", lty = 3)
+      
+      text(mean(c(l_bound, xlims[1])), 1/4 * ylims[1] + 3/4 * ylims[2], "critical region", col = "red", font = 2)
+    }
+    if (input$z_alt == "two.sided" || input$z_alt == "greater") {
+      u_bound <- if(input$z_alt == "two.sided") qnorm(1-alpha/2)*se else qnorm(1-alpha)*se
+      rect(u_bound, 0.5, 4, n_total + 0.5, col = rgb(1, 0, 0, 0.1), border = NA)
+      abline(v = u_bound, col = "red", lty = 3)
+      
+      text(mean(c(u_bound, xlims[2])), 1/4 * ylims[1] + 3/4 * ylims[2], "critical region", col = "red", font = 2)
+    }
+    
+    abline(v = 0, lwd = 2, lty = 1) # Null Hypothesis
+    
+    colors <- ifelse(df$rejected, "#e41a1c", "darkgrey")
+    points(df$mean, df$id, pch = 19, col = colors, cex = 0.8)
+  })
+  
+  # --- Detail Plot: Points for sample #1 ---
+  output$z_detail <- renderPlot({
+    first_sample <- z_master_data()[1, 1:input$z_n_obs] + input$z_true_mu
+    res <- test_results_df()[1, ]
+    
+    par(mar = c(4, 4, 2, 1))
+    ylims <- range(z_master_jitter()) + c(-1.5,1.5) * diff(range(z_master_jitter()))
+    jit <- z_master_jitter()[1:input$z_n_obs]
+    plot(first_sample, jit,
+         xlim=c(-4, 4), ylim=ylims, xlab = "Value", ylab="", main = "Individual Observations (Trial #1)")
+
+    xlims <- par("usr")[1:2]
+
+    points(res$mean, 3/4 * ylims[1] + 1/4 * ylims[2], pch = 18, col = ifelse(res$rejected, "red", "blue"), cex = 2.5)
+    abline(v = 0, lty = 2)
+    
+
+    # also draw critical region
+    se <- 1 / sqrt(input$z_n_obs)
+    alpha <- input$z_alpha
+    if (input$z_alt == "two.sided" || input$z_alt == "less") {
+      l_bound <- if(input$z_alt == "two.sided") qnorm(alpha/2)*se else qnorm(alpha)*se
+      rect(xlims[1], ylims[1], l_bound, ylims[2], col = rgb(1, 0, 0, 0.1), border = NA)
+      abline(v = l_bound, col = "red", lty = 3)
+      
+      text(mean(c(l_bound, xlims[1])), 1/4 * ylims[1] + 3/4 * ylims[2], "critical\nregion", col = "red", font = 2)
+    }
+    if (input$z_alt == "two.sided" || input$z_alt == "greater") {
+      u_bound <- if(input$z_alt == "two.sided") qnorm(1-alpha/2)*se else qnorm(1-alpha)*se
+      rect(u_bound, ylims[1], xlims[2], ylims[2], col = rgb(1, 0, 0, 0.1), border = NA)
+      abline(v = u_bound, col = "red", lty = 3)
+      
+      text(mean(c(u_bound, xlims[2])), 1/4 * ylims[1] + 3/4 * ylims[2], "critical\nregion", col = "red", font = 2)
+    }
+    
+    legend("topright", legend = c("Null Value (0)", "Sample Mean"), lty = c(2, NA), 
+           pch = c(NA, 18), col = c("black", "blue"), bty = "n")
+  })
+  
+  # --- Sampling Dist Plot ---
+  output$z_theory <- renderPlot({
+    se <- 1
+    xv <- seq(-3, 3, length.out = 500)
+    # Density of the mean under H0
+    yv_h0 <- dnorm(xv, mean = 0, sd = se)
+    
+    par(mar = c(4, 4, 2, 1))
+    plot(xv, yv_h0, type = "l", lwd = 2, xlab = expression(bar(x)), ylab = "Density",
+         main = "Standard normal critical values")
+    
+    # Shade Rejection Region
+    alpha <- input$z_alpha
+    if (input$z_alt %in% c("two.sided", "less")) {
+      crit <- if(input$z_alt == "two.sided") qnorm(alpha/2)*se else qnorm(alpha)*se
+      x_s <- seq(-4, crit, length.out = 100)
+      polygon(c(x_s, crit), c(dnorm(x_s, 0, se), 0), col = rgb(1, 0, 0, 0.3), border = NA)
+      
+      # label critical value
+      mtext(
+        side = 1,
+        at = crit,
+        text = round(crit, 2),
+        col = "red",
+        line = 0.5
+      )
+      abline(v = crit, col = "red", lty = 2)
+      
+      # text above critical region with arrow to it
+      # "critical region", x%
+      perc <- if(input$z_alt == "two.sided") alpha/2*100 else alpha*100
+      text((crit-3)/2, 0.15, paste0("Critical Region\n", round(perc,2), "%"), 
+           col = "red", font = 2, cex = 1.2)
+      arrows((crit-3)/2, 0.12, (crit-3)/2, 0.02, col = "red", length = 0.1)
+    }
+    if (input$z_alt %in% c("two.sided", "greater")) {
+      crit <- if(input$z_alt == "two.sided") qnorm(1-alpha/2)*se else qnorm(1-alpha)*se
+      x_s <- seq(crit, 4, length.out = 100)
+      polygon(c(crit, x_s), c(0, dnorm(x_s, 0, se)), col = rgb(1, 0, 0, 0.3), border = NA)
+    
+      mtext(
+        side = 1,
+        at = crit,
+        text = round(crit, 2),
+        col = "red",
+        line = 0.5
+      )
+      abline(v = crit, col = "red", lty = 2)
+      
+      perc <- if(input$z_alt == "two.sided") alpha/2*100 else alpha*100
+      text((crit+3)/2, 0.15, paste0("Critical Region\n", round(perc,2), "%"), 
+           col = "red", font = 2, cex = 1.2)
+      arrows((crit+3)/2, 0.12, (crit+3)/2, 0.02, col = "red", length = 0.1)
+    }
+    
+    # label inner part with percentage
+    text(0, 0.2, paste0(round((1-alpha)*100,2), "%"),
+      col = "steelblue", font = 2, cex=2)
+    
+    # line at y=0
+    abline(h = 0)
+  })
+}
+
+ttest_logic <- function(input, output, session) {
+  
+  # --- Master data generation based on True Mu ---
+  t_master_data <- reactiveVal(matrix(rnorm(100 * 100), nrow = 100))
+  t_master_jitter <- reactiveVal(jitter(rep(0, 100), amount = 0.3))
+  
+  observeEvent(input$resample_t, ignoreNULL = FALSE, {
+    t_master_data(matrix(rnorm(100 * 100), nrow = 100))
+    t_master_jitter(jitter(rep(0, 100), amount = 0.3))
+  })
+  
+  # --- Compute Test Statistics and Rejection ---
+  test_results_df <- reactive({
+    raw_data <- t_master_data() + input$t_true_mu
+    n <- input$t_n_obs
+    alpha <- input$t_alpha
+    num_to_show <- input$t_show_num
+    df_val <- n - 1
+    
+    subset_data <- raw_data[1:num_to_show, 1:n, drop = FALSE]
+    means <- rowMeans(subset_data)
+    
+    # Calculate sample standard deviation for each row
+    # Using apply for clarity; rowSds from matrixStats would be faster for large scales
+    sds <- apply(subset_data, 1, sd)
+    se <- sds / sqrt(n)
+    
+    tstat <- means / se  # t-statistic for each sample
+    
+    # Calculate rejection based on T-distribution
+    # Note: Critical values in 'raw scale' vary per sample because 'se' varies
+    if (input$t_alt == "two.sided") {
+      t_crit <- qt(1 - alpha/2, df = df_val)
+      lower_crit <- -t_crit * se
+      upper_crit <- t_crit * se
+      rejected <- means < lower_crit | means > upper_crit
+    } else if (input$t_alt == "greater") {
+      t_crit <- qt(1 - alpha, df = df_val)
+      lower_crit <- -Inf
+      upper_crit <- t_crit * se
+      rejected <- means > upper_crit
+    } else {
+      t_crit <- qt(alpha, df = df_val)
+      lower_crit <- t_crit * se
+      upper_crit <- Inf
+      rejected <- means < lower_crit
+    }
+    
+    data.frame(
+      id = 1:num_to_show,
+      mean = means,
+      tstat = tstat,
+      rejected = rejected,
+      lower_crit = lower_crit,
+      upper_crit = upper_crit
+    )
+  })
+  
+  # --- Main Rejection Plot ---
+  output$t_plot <- renderPlot({
+    df <- test_results_df()
+    n_total <- nrow(df)
+    n_rej <- sum(df$rejected)
+    
+    par(mar = c(4, 4, 3, 1))
+    plot(0, 0, type = "n", xlim = c(-8, 8), ylim = c(0.5, n_total + 0.5),
+         xlab = expression(paste("t statistic (", sqrt(n), bar(x), "/s)")), ylab = "Trial ID",
+         main = paste0("Rejection Rate: ", n_rej, "/", n_total, 
+                       " (", round(n_rej/n_total*100), "%) | H0: mu=0"))
+    
+    # Since SE varies per trial in T-tests, we use the average SE to visualize the region
+    df_val <- input$t_n_obs - 1
+    ylims <- par("usr")[3:4]
+    xlims <- par("usr")[1:2]
+    
+    if (input$t_alt == "two.sided" || input$t_alt == "less") {
+      l_bound <- if(input$t_alt == "two.sided") qt(input$t_alpha/2, df_val) else qt(input$t_alpha, df_val)
+      rect(-8, 0.5, l_bound, n_total + 0.5, col = rgb(1, 0, 0, 0.05), border = NA)
+      text(mean(c(l_bound, xlims[1])), 0.9 * ylims[2], "critical\nregion", col = "red", font = 2, cex=0.8)
+    }
+    if (input$t_alt == "two.sided" || input$t_alt == "greater") {
+      u_bound <- if(input$t_alt == "two.sided") qt(1-input$t_alpha/2, df_val) else qt(1-input$t_alpha, df_val)
+      rect(u_bound, 0.5, 8, n_total + 0.5, col = rgb(1, 0, 0, 0.05), border = NA)
+      text(mean(c(u_bound, xlims[2])), 0.9 * ylims[2], "critical\nregion", col = "red", font = 2, cex=0.8)
+    }
+    
+    abline(v = 0, lwd = 2, lty = 1)
+    colors <- ifelse(df$rejected, "#e41a1c", "darkgrey")
+    points(df$tstat, df$id, pch = 19, col = colors, cex = 0.8)
+  })
+  
+  # --- Detail Plot ---
+  output$t_detail <- renderPlot({
+    first_sample <- t_master_data()[1, 1:input$t_n_obs] + input$t_true_mu
+    res <- test_results_df()[1, ]
+    
+    par(mar = c(4, 4, 2, 1))
+    ylims <- range(t_master_jitter()) + c(-1.5,1.5) * diff(range(t_master_jitter()))
+    jit <- t_master_jitter()[1:input$t_n_obs]
+    
+    plot(first_sample, jit, xlim=c(-4, 4), ylim=ylims, xlab = "Value", ylab="", main = "Individual Observations (Trial #1)")
+    xlims <- par("usr")[1:2]
+    
+    points(res$mean, 3/4 * ylims[1] + 1/4 * ylims[2], pch = 18, col = ifelse(res$rejected, "red", "blue"), cex = 2.5)
+    abline(v = 0, lty = 2)
+    
+    # Draw specific critical region for Sample #1
+    if (input$t_alt == "two.sided" || input$t_alt == "less") {
+      rect(xlims[1], ylims[1], res$lower_crit, ylims[2], col = rgb(1, 0, 0, 0.1), border = NA)
+      abline(v = res$lower_crit, col = "red", lty = 3)
+      
+      # label critical region
+      text(mean(c(res$lower_crit, xlims[1])), 1/4 * ylims[1] + 3/4 * ylims[2], "critical\nregion", col = "red", font = 2)
+    }
+    if (input$t_alt == "two.sided" || input$t_alt == "greater") {
+      rect(res$upper_crit, ylims[1], xlims[2], ylims[2], col = rgb(1, 0, 0, 0.1), border = NA)
+      abline(v = res$upper_crit, col = "red", lty = 3)
+      
+      text(mean(c(res$upper_crit, xlims[2])), 1/4 * ylims[1] + 3/4 * ylims[2], "critical\nregion", col = "red", font = 2)
+    }
+    
+    legend("topright", legend = c("Null Value (0)", "Sample Mean"), lty = c(2, NA), 
+           pch = c(NA, 18), col = c("black", "blue"), bty = "n")
+  })
+  
+  # --- Sampling Dist Plot (t-Distribution) ---
+  output$t_theory <- renderPlot({
+    df_val <- input$t_n_obs - 1
+    xv <- seq(-4, 4, length.out = 500)
+    yv_h0 <- dt(xv, df = df_val) # T-density
+    
+    par(mar = c(4, 4, 2, 1))
+    plot(xv, yv_h0, type = "l", lwd = 2, xlab = "t-statistic", ylab = "Density",
+         main = paste0("t-distribution (df = ", df_val, ")"))
+    
+    alpha <- input$t_alpha
+    if (input$t_alt %in% c("two.sided", "less")) {
+      crit <- if(input$t_alt == "two.sided") qt(alpha/2, df_val) else qt(alpha, df_val)
+      x_s <- seq(-5, crit, length.out = 100)
+      polygon(c(x_s, crit), c(dt(x_s, df_val), 0), col = rgb(1, 0, 0, 0.3), border = NA)
+      abline(v = crit, col = "red", lty = 2)
+      mtext(side = 1, at = crit, text = round(crit, 2), col = "red", line = 0.5)
+      
+      perc <- if(input$t_alt == "two.sided") alpha/2*100 else alpha*100
+      text((crit-4)/2, 0.15, paste0("Critical Region\n", round(perc,2), "%"), 
+           col = "red", font = 2, cex = 1.2)
+      arrows((crit-4)/2, 0.12, (crit-4)/2, 0.02, col = "red", length = 0.1)
+    }
+    if (input$t_alt %in% c("two.sided", "greater")) {
+      crit <- if(input$t_alt == "two.sided") qt(1-alpha/2, df_val) else qt(1-alpha, df_val)
+      x_s <- seq(crit, 5, length.out = 100)
+      polygon(c(crit, x_s), c(0, dt(x_s, df_val)), col = rgb(1, 0, 0, 0.3), border = NA)
+      abline(v = crit, col = "red", lty = 2)
+      mtext(side = 1, at = crit, text = round(crit, 2), col = "red", line = 0.5)
+      
+      perc <- if(input$t_alt == "two.sided") alpha/2*100 else alpha*100
+      text((crit+4)/2, 0.15, paste0("Critical Region\n", round(perc,2), "%"), 
+           col = "red", font = 2, cex = 1.2)
+      arrows((crit+4)/2, 0.12, (crit+4)/2, 0.02, col = "red", length = 0.1)
+    }
+    
+    text(0, max(yv_h0)/2, paste0(round((1-alpha)*100,2), "%"), col = "steelblue", font = 2, cex=2)
+    abline(h = 0)
+  })
+}
+
+pval_logic <- function(input, output, session) {
+  # --- Master data generation (Single Sample) ---
+  # Generate 100 points once; we subset based on input$p_n_obs
+  p_master_data <- reactiveVal(rnorm(100))
+  p_master_jitter <- reactiveVal(jitter(rep(0, 100), amount = 0.2))
+  
+  observeEvent(input$resample_p, ignoreNULL = FALSE, {
+    p_master_data(rnorm(100))
+    p_master_jitter(jitter(rep(0, 100), amount = 0.2))
+  })
+  
+  # --- Observed Statistics ---
+  obs_stats <- reactive({
+    n <- input$p_n_obs
+    # Shift raw data by true mu
+    sample_data <- p_master_data()[1:n] + input$p_true_mu
+    x_bar <- mean(sample_data)
+    se <- 1 / sqrt(n)
+    z_obs <- x_bar / se
+    
+    # Calculate p-value based on alternative
+    p_val <- switch(input$p_alt,
+                    "two.sided" = 2 * pnorm(-abs(z_obs)),
+                    "greater"   = pnorm(z_obs, lower.tail = FALSE),
+                    "less"      = pnorm(z_obs, lower.tail = TRUE)
+    )
+    
+    list(x_bar = x_bar, z_obs = z_obs, p_val = p_val, se = se)
+  })
+  
+  # --- Jump to p-value Logic ---
+  observeEvent(input$jump_p, {
+    updateSliderInput(session, "p_alpha", value = obs_stats()$p_val)
+  })
+  
+  # --- The All-in-One Plot ---
+  output$p_main_plot <- renderPlot({
+    s <- obs_stats()
+    n <- input$p_n_obs
+    alpha <- input$p_alpha
+    se <- s$se
+    
+    # Setup plot coordinates
+    # We plot on the "Mean" scale to make the data points intuitive
+    xv <- seq(-3, 3, length.out = 500)
+    yv <- dnorm(xv, mean = 0, sd = se)
+    
+    densmax <- max(yv)
+    
+    par(mar = c(5, 4, 4, 2))
+    plot(xv, yv, type = "l", lwd = 2, col = "black",
+         xlab = expression(paste("Scale of Sample Mean (", bar(x), ")")), 
+         ylab = "Density",
+         main = paste0("p-value: ", round(s$p_val, 4), " | alpha: ", round(alpha, 3)),
+         ylim = c(-0.4, 2*densmax))
+    abline(h = 0)
+    
+    # 3. Plot Individual Data Points (at bottom of plot)
+    points(p_master_data()[1:n] + input$p_true_mu, 
+           1.5*densmax + p_master_jitter()[1:n] * 0.1*densmax, 
+           pch = 21, bg = "black", col = "white", cex=1.5)
+    
+    # 1. Visualize Critical Region (Alpha) based on H0
+    if (input$p_alt == "two.sided" || input$p_alt == "less") {
+      curr_alpha <- if(input$p_alt == "two.sided") alpha/2 else alpha
+      crit <- qnorm(curr_alpha, sd = se)
+      rect(-4, 1.1*densmax, crit, 2*densmax, col = rgb(1, 0, 0, 0.05), border = NA)
+      abline(v = crit, col = "red", lty = 3)
+      
+      # label the critical region
+      text(mean(c(crit, -4)), 1.1*densmax + 0.5*densmax, paste0("critical region\nα=", round(alpha, 4)), col = "red", font = 2)
+    }
+    if (input$p_alt == "two.sided" || input$p_alt == "greater") {
+      curr_alpha <- if(input$p_alt == "two.sided") alpha/2 else alpha
+      crit <- qnorm(1 - curr_alpha, sd = se)
+      rect(crit, 1.1*densmax, 4, 2*densmax, col = rgb(1, 0, 0, 0.05), border = NA)
+      abline(v = crit, col = "red", lty = 3)
+      
+      text(mean(c(crit, 4)), 1.1*densmax + 0.5*densmax, paste0("critical region\nα=", round(alpha, 4)), col = "red", font = 2)
+    }
+    
+    # 2. Visualize p-value Area (The "Observed" Extremity)
+    if (input$p_alt == "two.sided") {
+      ext <- abs(s$x_bar)
+      x_left <- seq(-4, -ext, length.out = 100)
+      x_right <- seq(ext, 4, length.out = 100)
+      polygon(c(x_left, -ext), c(dnorm(x_left, sd = se), 0), col = rgb(0, 0, 1, 0.3), border = NA)
+      polygon(c(ext, x_right), c(0, dnorm(x_right, sd = se)), col = rgb(0, 0, 1, 0.3), border = NA)
+      
+      text(0, 0.5*densmax, paste0("p-value area\n", round(s$p_val, 4)), col = "blue", font = 2)
+    } else if (input$p_alt == "greater") {
+      x_s <- seq(s$x_bar, 4, length.out = 100)
+      polygon(c(s$x_bar, x_s), c(0, dnorm(x_s, sd = se)), col = rgb(0, 0, 1, 0.3), border = NA)
+      
+      text(s$x_bar + 1, 0.5*densmax, paste0("p-value area\n", round(s$p_val, 4)), col = "blue", font = 2)
+    } else {
+      x_s <- seq(-4, s$x_bar, length.out = 100)
+      polygon(c(x_s, s$x_bar), c(dnorm(x_s, sd = se), 0), col = rgb(0, 0, 1, 0.3), border = NA)
+      
+      text(s$x_bar - 1, 0.5*densmax, paste0("p-value area\n", round(s$p_val, 4)), col = "blue", font = 2)
+    }
+    
+    
+    
+    # 4. Highlight the Sample Mean
+    abline(v = s$x_bar, col = "blue", lwd = 3)
+    abline(v = 0, lty = 2) # Null
+    
+    # Legend and labels
+    legend("topright", 
+           legend = c("Null Distribution", "Critical Region (alpha)", "p-value area", "Observed Mean"),
+           fill = c(NA, rgb(1, 0, 0, 0.1), rgb(0, 0, 1, 0.3), NA),
+           border = c("black", NA, NA, NA),
+           lty = c(1, NA, NA, 1),
+           col = c("black", NA, NA, "blue"),
+           lwd = c(1, NA, NA, 3),
+           bty = "n")
+  })
+}
+
+
+testci_logic <- function(input, output, session) {
+    # --- Master data generation ---
+    dual_master_data <- reactiveVal(rnorm(100))
+    dual_master_jitter <- reactiveVal(jitter(rep(0, 100), amount = 0.2))
+    
+    observeEvent(input$resample_dual, ignoreNULL = FALSE, {
+      dual_master_data(rnorm(100))
+      dual_master_jitter(jitter(rep(0, 100), amount = 0.2))
+    })
+    
+    # --- Calculations ---
+    dual_stats <- reactive({
+      n <- input$dual_n_obs
+      alpha <- input$dual_alpha
+      sample_data <- dual_master_data()[1:n] + input$dual_true_mu
+      x_bar <- mean(sample_data)
+      se <- 1 / sqrt(n)
+      
+      # Determine critical multiplier based on alternative
+      if (input$dual_alt == "two.sided") {
+        z_crit <- qnorm(1 - alpha/2)
+      } else {
+        z_crit <- qnorm(1 - alpha)
+      }
+      
+      # CI boundaries
+      ci_lower <- x_bar - (z_crit * se)
+      ci_upper <- x_bar + (z_crit * se)
+      
+      list(x_bar = x_bar, se = se, ci_l = ci_lower, ci_u = ci_upper, z_crit = z_crit)
+    })
+    
+    output$dual_plot <- renderPlot({
+      s <- dual_stats()
+      n <- input$dual_n_obs
+      alpha <- input$dual_alpha
+      se <- s$se
+      
+      # We define an arbitrary height for our zones since density is gone
+      # Zone 3: Data points (Top)
+      # Zone 2: Critical Region (Middle)
+      # Zone 1: Confidence Interval (Bottom)
+      
+      par(mar = c(5, 4, 4, 2))
+      plot(NULL, xlim = c(-3, 3), ylim = c(-1, 3), 
+           xlab = expression(paste("Scale of Sample Mean (", bar(x), ")")), 
+           ylab = "", yaxt = "n",
+           main = paste0("Duality: Hypothesis Test vs. Confidence Interval (alpha = ", alpha, ")"))
+      
+      abline(v = 0, lty = 2, lwd = 2) # Null value marker
+      text(0, 2.8, "Null Value (0)", pos = 3, font = 3, cex = 0.8)
+      
+      # --- 1. TOP ZONE: Data Points (y ~ 2.5) ---
+      points(dual_master_data()[1:n] + input$dual_true_mu, 
+             2.5 + dual_master_jitter()[1:n] * 0.3, 
+             pch = 21, bg = "black", col = "white", cex = 1.3)
+      text(-1.5, 2.5, "Sample\nData", font = 2, pos = 4)
+      
+      # --- 2. MIDDLE ZONE: Hypothesis Test Critical Regions (y from 1 to 2) ---
+      # Draw a "Track" for the test
+      rect(-4, 1, 4, 2, border = "gray80", lty = 1)
+      
+      if (input$dual_alt == "two.sided" || input$dual_alt == "less") {
+        curr_alpha <- if(input$dual_alt == "two.sided") alpha/2 else alpha
+        crit_val <- qnorm(curr_alpha, sd = se)
+        rect(-4, 1, crit_val, 2, col = rgb(1, 0, 0, 0.15), border = "red", lty = 3)
+        text(crit_val, 1.5, paste0("Crit. Value\n", round(crit_val, 3)), 
+             col = "red", pos = 2, cex = 0.8, font = 2)
+      }
+      if (input$dual_alt == "two.sided" || input$dual_alt == "greater") {
+        curr_alpha <- if(input$dual_alt == "two.sided") alpha/2 else alpha
+        crit_val <- qnorm(1 - curr_alpha, sd = se)
+        rect(crit_val, 1, 4, 2, col = rgb(1, 0, 0, 0.15), border = "red", lty = 3)
+        text(crit_val, 1.5, paste0("Crit. Value\n", round(crit_val, 3)), 
+             col = "red", pos = 4, cex = 0.8, font = 2)
+      }
+      
+      text(-2.8, 1.5, "Rejection\nRegions", font = 2, pos = 4)
+      
+      # --- 3. BOTTOM ZONE: Confidence Interval (y ~ 0) ---
+      ci_y <- 0
+      # Logic for rendering one-sided intervals as rays
+      l_bound <- if(input$dual_alt == "greater") -4 else s$ci_l
+      u_bound <- if(input$dual_alt == "less") 4 else s$ci_u
+      
+      # Draw the CI line
+      segments(x0 = l_bound, y0 = ci_y, x1 = u_bound, y1 = ci_y, lwd = 2, col = "steelblue")
+      points(s$x_bar, ci_y, pch = 18, col = "steelblue", cex = 3) # Sample mean
+      
+      # Label CI
+      text(s$x_bar, ci_y+0.2, paste0(round((1-alpha)*100), "% CI"), font = 2, pos = 4, col = "steelblue")
+      
+      # --- 4. THE CONNECTION ---
+      # Draw a line showing the sample mean across all zones
+      abline(v = s$x_bar, col = "darkblue", lwd = 2, lty = 4)
+      text(s$x_bar+0.05, 2.8, expression(bar(x)), col = "darkblue", font = 2)
+      
+      # --- 5. Duality Decision Summary ---
+      contained <- (l_bound <= 0 && u_bound >= 0)
+      decision_color <- if(contained) "black" else "#e41a1c"
+      
+      # Summary box at the very bottom
+      rect(-3, -0.9, 3, -0.4, col = "gray95", border = decision_color, lwd = 2)
+      summary_msg <- if(contained) {
+        "H₀ Not Rejected: 0 is inside the Confidence Interval."
+      } else {
+        "H₀ Rejected: 0 is outside the Confidence Interval."
+      }
+      text(0, -0.65, summary_msg, col = decision_color, font = 2, cex = 1.1)
+      
+    })
+  }
+  
+twosample_logic <- function(input, output, session) {
+  
+  # --- Master data generation (Two Independent Streams) ---
+  z2_master1 <- reactiveVal(rnorm(100))
+  z2_master2 <- reactiveVal(rnorm(100))
+  z2_jitter1 <- reactiveVal(jitter(rep(0, 100), amount = 0.15))
+  z2_jitter2 <- reactiveVal(jitter(rep(0, 100), amount = 0.15))
+  
+  observeEvent(input$resample_2z, ignoreNULL = FALSE, {
+    z2_master1(rnorm(100))
+    z2_master2(rnorm(100))
+    z2_jitter1(jitter(rep(0, 100), amount = 0.15))
+    z2_jitter2(jitter(rep(0, 100), amount = 0.15))
+  })
+  
+  # --- Calculations ---
+  z2_stats <- reactive({
+    n1 <- input$z2_n1
+    n2 <- input$z2_n2
+    
+    # Extract and shift data
+    data1 <- z2_master1()[1:n1] + input$z2_mu1
+    data2 <- z2_master2()[1:n2] + input$z2_mu2
+    
+    x1_bar <- mean(data1)
+    x2_bar <- mean(data2)
+    diff_obs <- x1_bar - x2_bar
+    
+    # Standard Error of the difference (Sigma=1 known for both)
+    se_diff <- sqrt((1^2/n1) + (1^2/n2))
+    
+    alpha <- input$z2_alpha
+    if (input$z2_alt == "two.sided") {
+      z_crit <- qnorm(1 - alpha/2)
+    } else {
+      z_crit <- qnorm(1 - alpha)
+    }
+    
+    list(
+      x1_bar = x1_bar, x2_bar = x2_bar, 
+      diff = diff_obs, se = se_diff, 
+      z_crit = z_crit, n1 = n1, n2 = n2
+    )
+  })
+  
+  output$z2_plot <- renderPlot({
+    s <- z2_stats()
+    alpha <- input$z2_alpha
+    
+    # Layout Setup: 
+    # y=3: Group 1 Points | y=2: Group 2 Points | y=0.5: Difference Test
+    par(mar = c(5, 4, 4, 2))
+    plot(NULL, xlim = c(-3, 3), ylim = c(-1, 4), 
+         xlab = "Value / Difference Scale", ylab = "", yaxt = "n",
+         main = "Two-Sample Z-Test (Known Variance = 1)")
+    
+    # --- 1. TOP ZONE: Raw Data ---
+    # Group 1 (Blue)
+    points(z2_master1()[1:s$n1] + input$z2_mu1, 3.2 + z2_jitter1()[1:s$n1], 
+           pch = 21, bg = "#007bff", col = "white", cex = 1.2)
+    lines(c(s$x1_bar, s$x1_bar), c(1.8, 3.6), col = "#007bff", lwd = 2, lty = 2)
+    
+    # Group 2 (Green)
+    points(z2_master2()[1:s$n2] + input$z2_mu2, 2.2 + z2_jitter2()[1:s$n2], 
+           pch = 21, bg = "#28a745", col = "white", cex = 1.2)
+    lines(c(s$x2_bar, s$x2_bar), c(1.8, 3.6), col = "#28a745", lwd = 2, lty = 2)
+    
+    text(-2.8, 3.2, "Group 1", col = "#007bff", font = 2, pos = 4)
+    text(-2.8, 2.2, "Group 2", col = "#28a745", font = 2, pos = 4)
+    
+    # --- 2. MIDDLE ZONE: The Difference Scale (centered at 0) ---
+    # Highlight the 0 line (Null Hypothesis: mu1 - mu2 = 0)
+    abline(v = 0, lwd = 2, lty = 1)
+    rect(-4, 0.2, 4, 1.2, border = "gray90")
+    
+    # Rejection Regions on the difference scale
+    if (input$z2_alt == "two.sided" || input$z2_alt == "less") {
+      curr_alpha <- if(input$z2_alt == "two.sided") alpha/2 else alpha
+      crit <- qnorm(curr_alpha, sd = s$se)
+      rect(-4, 0.2, crit, 1.2, col = rgb(1, 0, 0, 0.15), border = "red", lty = 3)
+    }
+    if (input$z2_alt == "two.sided" || input$z2_alt == "greater") {
+      curr_alpha <- if(input$z2_alt == "two.sided") alpha/2 else alpha
+      crit <- qnorm(1 - curr_alpha, sd = s$se)
+      rect(crit, 0.2, 4, 1.2, col = rgb(1, 0, 0, 0.15), border = "red", lty = 3)
+    }
+    
+    # Plot the observed difference
+    points(s$diff, 0.7, pch = 18, col = "darkred", cex = 3)
+    segments(x0 = s$x2_bar, y0 = 1.8, x1 = s$x1_bar, y1 = 1.8, lwd = 3, col = "darkred")
+    text(s$diff, 1.4, paste("Observed Difference:", round(s$diff, 3)), col = "darkred", font = 2)
+    # add arrow from text to point and center of segment
+    
+    arrows((s$x1_bar + s$x2_bar)/2, 1.7, s$diff, 0.8, col = "darkred", length = 0.1)
+    
+    text(-2.8, 0.7, "Difference\nScale (H0: 0)", font = 2, pos = 4)
+    
+    # --- 3. BOTTOM ZONE: Summary ---
+    # Decision Logic
+    is_significant <- if(input$z2_alt == "two.sided") {
+      abs(s$diff) > (s$z_crit * s$se)
+    } else if(input$z2_alt == "greater") {
+      s$diff > (s$z_crit * s$se)
+    } else {
+      s$diff < (-s$z_crit * s$se)
+    }
+    
+    box_col <- if(is_significant) "#e41a1c" else "black"
+    rect(-2.5, -0.8, 2.5, -0.2, border = box_col, lwd = 2, col = "gray98")
+    res_text <- if(is_significant) "Decision: Reject H₀ (Significant Difference)" else "Decision: Fail to Reject H₀"
+    text(0, -0.5, res_text, col = box_col, font = 2, cex = 1.2)
+    
+    # Legend
+    legend("topright", legend = c("Sample Mean 1", "Sample Mean 2", "Difference (1-2)"),
+           col = c("#007bff", "#28a745", "darkred"), lty = c(2, 2, 1), lwd = 2, bty = "n")
+  })
+}

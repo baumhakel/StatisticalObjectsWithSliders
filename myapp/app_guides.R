@@ -131,7 +131,7 @@ Visualizes the Maximum Likelihood Estimation for a Bernoulli Distribution (Succe
     * When the red step function matches the 'ratio' of the stacked points, the blue lines are collectively as long as possible, and the likelihood is maximized.
 ",
   ci = "
-Simulation of 100 independent confidence intervals for the mean (true mean = 0) based on normally distributed data.
+Simulation of N independent confidence intervals for the mean (true mean = 0) based on normally distributed data.
 * **Sliders:** 
     * Change the **Standard Deviation** of the underlying normal distribution
     * Change the number of points generated from the distribution with **Sample Size**.
@@ -148,5 +148,82 @@ Simulation of 100 independent confidence intervals for the mean (true mean = 0) 
     * As the sample size increases, the intervals become narrower. We are more certain about our estimation.
     * Increasing the confidence level also widens the intervals, as we require more certainty that they will capture the true mean.
     * As we increase the number of intervals generated, the observed percentage of intervals that capture the true mean should get closer to the theoretical confidence level (e.g., 95%).
-"
+",
+  ztest = "
+Simulation of N independent samples from a normal distribution with a true mean that can be adjusted and sigma=1 known. For each sample, a z-test is performed to test the null hypothesis that the true mean is 0.
+  * **Sliders:**
+    * **True Mean:** Sets the center of the data. At 0, the null hypothesis is true.
+    * **Sample Size:** Larger samples provide more evidence and higher precision.
+    * **Alternative Hypothesis:** Choose between two-sided or directional (one-sided) tests.
+    * **Significance Level (alpha):** Sets the threshold for rejecting the null hypothesis.
+* **Plots:**
+    * **Outcomes:** Dots in red regions indicate \"statistically significant\" results (rejections).
+    * **Sample Distribution:** Shows raw data points and the mean and result for a single trial.
+    * **Theoretical Values:** Displays the bell curve and the cut-offs for rejection.
+* **Observations:**
+    * **False Alarms:** At a true mean of 0, alpha percent of repetitions will still be red by pure chance.
+    * **Power:** Increasing sample size or moving the true mean from 0 makes rejection more likely.
+    * **Precision:** Larger samples shrink the critical regions, detecting smaller differences.",
+  ttest = "
+Simulation of N independent samples from a normal distribution with a true mean that can be adjusted and sigma unknown. For each sample, a t-test is performed to test the null hypothesis that the true mean is 0.  
+* **Sliders:**
+    * **True Mean:** Sets the center of the data. At 0, the null hypothesis is true.
+    * **Sample Size:** Larger samples provide more evidence and higher precision.
+    * **Alternative Hypothesis:** Choose between two-sided or directional (one-sided) tests.
+    * **Significance Level (alpha):** Sets the threshold for rejecting the null hypothesis.
+* **Plots:**
+    * **Outcomes:** Dots in red regions indicate \"statistically significant\" results (rejections).
+    * **Sample Distribution:** Shows raw data points and the mean and result for a single trial.
+    * **Theoretical Values:** Displays the bell curve and the cut-offs for rejection.
+* **Observations:**
+    * **False Alarms:** At a true mean of 0, alpha percent of repetitions will still be red by pure chance.
+    * **Power:** Increasing sample size or moving the true mean from 0 makes rejection more likely.
+    * **Precision:** Larger samples shrink the critical regions, detecting smaller differences.",
+  pval = "
+Illustrates the concept of p-values as that significance level, at which the observed result would be just significant. 
+* **Sliders:**
+    * **True Mean:** Shifts the sample. If set to 0, the data follows the null hypothesis.
+    * **Sample Size:** Adjusts how many points are in the sample, changing the curve's width.
+    * **Significance Level (alpha):** Sets the red \"rejection\" threshold.
+    * **Jump to p-value:** Snaps the alpha slider to match the current p-value.
+* **Plot:**
+    * **Bell Curve:** Represents the \"Null\" world. The **blue shaded area** is the p-value.
+    * **Top Bars:** The red shaded regions represent the critical zones for a given alpha.
+    * **Points:** Individual data observations are shown at the very top.
+    * **Blue Line:** Marks the calculated sample mean.
+* **Observations:**
+    * **Definition:** The p-value is the blue area. It shows how likely it is to see a result this extreme if the true mean were 0.
+    * **Significant Results:** If the blue line enters the red region, the p-value is smaller than alpha, and we reject the null hypothesis.
+    * **The \"Jump\":** Using the jump button shows that the p-value is exactly the point where the result becomes \"significant.\"
+    * **Sample Size:** Increasing n makes the test more exact if the true mean is not 0 (smaller deviation of the mean from 0 is required to reject)",
+  testci = "
+Illustrates the duality between hypothesis testing and confidence intervals for the mean. Landing in the critical region of the test is mathematically equivalent to finding that the null value (0) is outside your confidence interval.
+* **Sliders:**
+    * **True Mean:** Shifts the sample. At 0, the null hypothesis is true.
+    * **Sample Size:** Controls evidence strength. Larger samples make rejection regions and intervals narrower.
+    * **Alternative Hypothesis:** Sets the test type (two-sided or one-sided).
+    * **Significance Level (alpha):** Sets the error budget for the test and the coverage for the interval.
+* **Plot:**
+    * **Sample Data (Top):** Shows individual points and the calculated sample mean.
+    * **Rejection Regions (Middle):** The red zones based on the null value of 0. If the sample mean enters these zones, we reject the null.
+    * **Confidence Interval (Bottom):** A blue bar representing the range of likely values for the mean.
+* **Observations:**
+    * **The Duality:** If the blue confidence interval does not touch the dashed line at 0, the sample mean will always be in the red rejection region. Rejecting the null hypothesis is mathematically identical to finding that the null value (0) is outside your confidence interval.
+    * **Alpha vs. Confidence:** A 5% significance level (alpha = 0.05) corresponds exactly to a 95% (=1-alpha) confidence interval.
+    * **One-Sided Tests:** Notice how choosing \"Greater\" or \"Less\" turns the confidence interval into a ray that extends infinitely in one direction.",
+  twosample = "
+Illustrates the concept of two-sample testing by simulating data for two groups and showing how the difference between their means relates to the rejection regions of a test.  
+* **Sliders:**
+    * **Group 1 & 2 Means:** Set the true center for each group. We are interested in their difference.
+    * **Sample Sizes (n1, n2):** Control how many points are in each group. Larger samples increase the test's precision.
+    * **Alternative Hypothesis:** Choose whether to test for any difference or a specific direction (e.g., Group 1 has larger mean).
+    * **Significance Level (alpha):** Sets the threshold for declaring the difference \"statistically significant.\"
+* **Plots:**
+    * **Raw Data (Top):** Displays individual points for Group 1 (blue) and Group 2 (green). Dashed lines mark the average of each sample.
+    * **Middle:** Point corresponds to difference between sample means (Group1-Group2). The red area is the rejection region. If the dark red point lands here, the groups are considered significantly different.
+* **Observations:**
+    * **The Gap:** Watch the red horizontal line between the groups. As that gap grows, the point on the difference scale moves further from zero.
+    * **Precision:** If you decrease the sample size of even one group, the red rejection regions will expand. This shows how a small sample makes it harder to prove a difference exists.
+    * **Directionality:** If you choose a one-sided test, the entire red region moves to one side. A difference in the opposite direction will never be \"significant\" in this mode.
+    * **Decision Box:** The summary at the bottom confirms if the evidence is strong enough to reject the idea that the two groups are identical."
 )

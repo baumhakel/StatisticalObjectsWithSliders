@@ -60,6 +60,20 @@ page_ui <- list(
              actionButton("go_bern", "MLE for p [D10]", class="btn-success w-100")),
         card(card_header("Confidence Intervals"), p("Explore how coverage works and how parameters influence the size of confidence intervals."), 
              actionButton("go_ci", "Confidence Intervals [D12]", class="btn-success w-100"))
+      ),
+      
+      h4("4. Hypothesis Testing", class = "mt-5 mb-3 border-bottom"),
+      layout_column_wrap(
+        width = 1/3,
+        # cards: 1. Z-Test and T-Test, 2. p-value, testing and confidence intervals, 3. two-sample test
+        card(card_header("Testing for the Mean"), p("Explore significance level rejection rate"),
+             layout_column_wrap(width=1/2, actionButton("go_ztest", "Z-test (σ known) [D13]", class="btn-outline-warning"),
+                                actionButton("go_ttest", "t-test (σ unknown) [D15]", class="btn-outline-warning"))),
+        card(card_header("p-values & Confidence Intervals"), p("Explore the concept of p-values and how confidence intervals relate to hypothesis tests"), 
+             layout_column_wrap(width=1/2, actionButton("go_pval", "p-values for Z-test [D16]", class="btn-outline-warning"),
+             actionButton("go_test_ci", "CI vs. Z-test [D14]", class="btn-outline-warning"))),
+        card(card_header("Two-sample Tests"), p("Explore the influence of σX and σY and μX-μY"), 
+             actionButton("go_twosample", "Two-sample tests [D17]", class="btn-warning w-100"))
       )
     )
   },
@@ -349,5 +363,168 @@ page_ui <- list(
         plotOutput("box_main_plot", height = "750px") # Increased height for 16:9 feel
       )
     )
-  }
+  },
+  ztest = function() {
+    layout_sidebar(
+      sidebar = sidebar(
+        actionButton("go_back", "← Back to Home", class="btn-secondary mb-3"),
+        actionButton("resample_z", "Generate New Samples", class="btn-warning w-100"),
+        hr(),
+        sliderInput("z_true_mu", "True Mean (μ):", min = -2, max = 2, value = 0, step = 0.1),
+        sliderInput("z_n_obs", "Sample Size (n):", min = 5, max = 100, value = 30),
+        selectInput("z_alt", "Alternative Hypothesis:",
+                    choices = list("Two-Sided (≠)" = "two.sided", 
+                                   "Greater (>)" = "greater", 
+                                   "Less (<)" = "less")),
+        sliderInput("z_alpha", "Significance Level (α):", min = 0.01, max = 0.20, value = 0.05, step = 0.01),
+        sliderInput("z_show_num", "Number of Repetitions:", min = 1, max = 100, value = 50)
+      ),
+      guide_accordion("ztest"),
+      layout_column_wrap(
+        width = 1,
+        card(
+          card_header("Hypothesis Testing Outcomes (Rejection Regions)"),
+          plotOutput("z_plot", height = "450px")
+        ),
+        layout_column_wrap(
+          width = 1/2,
+          card(
+            card_header("Latest Sample Distribution"),
+            plotOutput("z_detail", height = "300px")
+          ),
+          card(
+            card_header("Theoretical Critical Values (N-Dist)"),
+            plotOutput("z_theory", height = "300px")
+          )
+        )
+      )
+    )
+  },
+  ttest = function() {
+    layout_sidebar(
+      sidebar = sidebar(
+        actionButton("go_back", "← Back to Home", class="btn-secondary mb-3"),
+        actionButton("resample_t", "Generate New Samples", class="btn-warning w-100"),
+        hr(),
+        sliderInput("t_true_mu", "True Mean (μ):", min = -2, max = 2, value = 0, step = 0.1),
+        sliderInput("t_n_obs", "Sample Size (n):", min = 2, max = 100, value = 30), # n=2 is min for t-test
+        selectInput("t_alt", "Alternative Hypothesis:",
+                    choices = list("Two-Sided (≠)" = "two.sided", 
+                                   "Greater (>)" = "greater", 
+                                   "Less (<)" = "less")),
+        sliderInput("t_alpha", "Significance Level (α):", min = 0.01, max = 0.20, value = 0.05, step = 0.01),
+        sliderInput("t_show_num", "Number of Repetitions:", min = 1, max = 100, value = 50)
+      ),
+      guide_accordion("ttest"),
+      layout_column_wrap(
+        width = 1,
+        card(
+          card_header("Hypothesis Testing Outcomes (t-Distribution Rejection)"),
+          plotOutput("t_plot", height = "450px")
+        ),
+        layout_column_wrap(
+          width = 1/2,
+          card(
+            card_header("Latest Sample Distribution"),
+            plotOutput("t_detail", height = "300px")
+          ),
+          card(
+            card_header("Theoretical Critical Values (t-Dist)"),
+            plotOutput("t_theory", height = "300px")
+          )
+        )
+      )
+    )
+  },
+  pval = function() {
+    layout_sidebar(
+      sidebar = sidebar(
+        actionButton("go_back", "← Back to Home", class="btn-secondary mb-3"),
+        actionButton("resample_p", "Generate New Sample", class="btn-warning w-100"),
+        hr(),
+        sliderInput("p_true_mu", "True Mean (μ):", min = -0.5, max = 0.5, value = 0, step = 0.1),
+        sliderInput("p_n_obs", "Sample Size (n):", min = 5, max = 25, value = 15),
+        selectInput("p_alt", "Alternative Hypothesis:",
+                    choices = list("Greater (>)" = "greater", 
+                                   "Less (<)" = "less",
+                                   "Two-Sided (≠)" = "two.sided")),
+        hr(),
+        # High-resolution slider for Alpha/p-value comparison
+        sliderInput("p_alpha", "Significance Level (α):", 
+                    min = 0, max = 1, value = 0.05, step = 0.00001),
+        actionButton("jump_p", "Jump to p-value", class="btn-info w-100")
+      ),
+      guide_accordion("pval"),
+      layout_column_wrap(
+        width = 1,
+        card(
+          card_header("The p-value Visualization"),
+          # Large plot showing the observed mean relative to the Null Distribution
+          plotOutput("p_main_plot", height = "500px")
+        )
+      )
+    )
+  },
+  testci = function() {
+    layout_sidebar(
+      sidebar = sidebar(
+        actionButton("go_back", "← Back to Home", class="btn-secondary mb-3"),
+        actionButton("resample_dual", "Generate New Sample", class="btn-warning w-100"),
+        hr(),
+        sliderInput("dual_true_mu", "True Mean (μ):", min = -2, max = 2, value = 0.3, step = 0.1),
+        sliderInput("dual_n_obs", "Sample Size (n):", min = 5, max = 100, value = 30),
+        selectInput("dual_alt", "Alternative Hypothesis (Test Type):",
+                    choices = list("Two-Sided (≠)" = "two.sided", 
+                                   "Greater (>)" = "greater", 
+                                   "Less (<)" = "less")),
+        hr(),
+        # Linking Alpha to Confidence Level visually: (1 - Alpha)
+        sliderInput("dual_alpha", "Significance Level (α):", 
+                    min = 0.01, max = 0.20, value = 0.05, step = 0.01)
+      ),
+      guide_accordion("testci"),
+      layout_column_wrap(
+        width = 1,
+        card(
+          card_header("Duality: Confidence Intervals & Hypothesis Tests"),
+          # Single high-impact plot showing the CI and the Null Distribution Rejection Regions
+          plotOutput("dual_plot", height = "550px")
+        )
+      )
+    )
+  },
+  twosample = function() {
+    layout_sidebar(
+      sidebar = sidebar(
+        actionButton("go_back", "← Back to Home", class="btn-secondary mb-3"),
+        actionButton("resample_2z", "Generate New Samples", class="btn-warning w-100"),
+        hr(),
+        # Group 1 Controls
+        span("Group 1", style="font-weight: bold; color: #007bff;"),
+        sliderInput("z2_mu1", "True Mean (μ1):", min = -2, max = 2, value = 0.5, step = 0.1),
+        sliderInput("z2_n1", "Sample Size (n1):", min = 5, max = 100, value = 30),
+        hr(),
+        # Group 2 Controls
+        span("Group 2", style="font-weight: bold; color: #28a745;"),
+        sliderInput("z2_mu2", "True Mean (μ2):", min = -2, max = 2, value = 0, step = 0.1),
+        sliderInput("z2_n2", "Sample Size (n2):", min = 5, max = 100, value = 30),
+        hr(),
+        selectInput("z2_alt", "Alternative Hypothesis:",
+                    choices = list("Difference (μ1 ≠ μ2)" = "two.sided", 
+                                   "Group 1 > Group 2" = "greater", 
+                                   "Group 1 < Group 2" = "less")),
+        sliderInput("z2_alpha", "Significance Level (α):", 
+                    min = 0.01, max = 0.20, value = 0.05, step = 0.01)
+      ),
+      guide_accordion("twosample"),
+      layout_column_wrap(
+        width = 1,
+        card(
+          card_header("Two-Sample Comparison: Mean Differences"),
+          # This plot will show the raw points for both groups and the difference scale
+          plotOutput("z2_plot", height = "600px")
+        )
+      )
+    )
+}
 )
