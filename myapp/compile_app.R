@@ -4,7 +4,8 @@ shinylive::export(
   appdir = "myapp",
   destdir = "docs",
   pkgs = c("shiny", "ggplot2", "bslib", "munsell", "markdown"),
-  template_params = list(title = "SOS")
+  template_params = list(title = "SOS",
+                         base_url = "/StatisticalObjectsWithSliders/")
 )
 
 # and test
