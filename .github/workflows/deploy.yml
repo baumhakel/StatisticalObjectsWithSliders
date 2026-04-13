@@ -21,14 +21,15 @@ jobs:
 
       - name: Install R Packages
         run: |
-          install.packages(c("shinylive", "shiny", "ggplot2", "bslib", "munsell", "commonmark", "gld"))
+          install.packages("remotes")
+          install.packages(c("shinylive", "shiny", "ggplot2", "bslib", "munsell", "commonmark", "gld", "Markdown"))
         shell: Rscript {0}
 
       - name: Export App
         run: |
-          shinylive::export(appdir = "myapp", destdir = "site")
+          rm -rf site
+          Rscript -e 'shinylive::export(appdir = "myapp", destdir = "site")'
           touch site/.nojekyll
-        shell: Rscript {0}
 
       - name: Upload Pages Artifact
         uses: actions/upload-pages-artifact@v3
