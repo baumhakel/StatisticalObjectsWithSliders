@@ -1,14 +1,15 @@
 name: Deploy Shinylive App
-
 on:
   push:
-    branches: [main] # Change this if your default branch is different
+    branches: [main]
 
 jobs:
   build-deploy:
     runs-on: ubuntu-latest
     permissions:
-      contents: write
+      contents: read
+      pages: write
+      id-token: write
     steps:
       - name: Checkout Code
         uses: actions/checkout@v4
@@ -18,26 +19,22 @@ jobs:
         with:
           use-public-rspm: true
 
-      - name: Install System Dependencies
-        run: |
-          sudo apt-get update
-          sudo apt-get install -y libcurl4-openssl-dev
-
       - name: Install R Packages
         run: |
           install.packages(c("shinylive", "shiny", "ggplot2", "bslib", "munsell", "commonmark", "gld"))
         shell: Rscript {0}
 
-      - name: Export App to docs/
+      - name: Export App
         run: |
-          shinylive::export(appdir = "myapp", destdir = "docs")
+          shinylive::export(appdir = "myapp", destdir = "site")
+          touch site/.nojekyll
         shell: Rscript {0}
 
-      - name: Disable Jekyll
-        run: touch docs/.nojekyll
-
-      - name: Commit and Push Changes
-        uses: stefanzweifel/git-auto-commit-action@v5
+      - name: Upload Pages Artifact
+        uses: actions/upload-pages-artifact@v3
         with:
-          commit_message: "Auto-deploy Shinylive app to docs/"
-          file_pattern: 'docs/*'
+          path: 'site' # Points to the folder we just created
+
+      - name: Deploy to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v4
