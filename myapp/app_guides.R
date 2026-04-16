@@ -225,5 +225,77 @@ Illustrates the concept of two-sample testing by simulating data for two groups 
     * **The Gap:** Watch the red horizontal line between the groups. As that gap grows, the point on the difference scale moves further from zero.
     * **Precision:** If you decrease the sample size of even one group, the red rejection regions will expand. This shows how a small sample makes it harder to prove a difference exists.
     * **Directionality:** If you choose a one-sided test, the entire red region moves to one side. A difference in the opposite direction will never be \"significant\" in this mode.
-    * **Decision Box:** The summary at the bottom confirms if the evidence is strong enough to reject the idea that the two groups are identical."
+    * **Decision Box:** The summary at the bottom confirms if the evidence is strong enough to reject the idea that the two groups are identical.",
+  slr_est = "
+Visualizes the estimation of regression coefficients by minimizing the Sum of Squared Errors (SSE) for a simple linear model.
+* **Sliders:** Manually adjust **beta_0** (intercept) and **beta_1** (slope) to fit the regression line to the data points.
+* **Top Plot:** Displays the 20 data points and the proposed regression line. Vertical dashed lines represent the residuals (errors) for each point.
+* **Bottom Row:** A heatmap and two projection plots showing the SSE surface. The red point indicates your current manual guess, while the blue point marks the analytical OLS optimizer (the global minimum).
+* **Observations:** 
+    * The goal is to minimize the SSE by adjusting the sliders until the regression line passes through the center of the data cloud.
+    * In the heatmap, this corresponds to moving the red point into the brightest 'valley' of the loss surface.
+    * When the red point overlaps with the blue point, you have found the most efficient statistical fit for the data.
+",
+  slr_dist = "
+Explores the sampling distribution of regression estimators by simulating multiple datasets from the same underlying 'True' model.
+* **Slider:** Adjust **N** to control how many simulated regression lines are displayed simultaneously.
+* **Top Plot:** The bold red line is the ground truth. The blue 'shadow' lines represent individual estimated regression lines from different random samples. This visualizes the uncertainty and variability of the regression line.
+* **Bottom Row:** Histograms showing the distribution of the estimated intercepts (β₀) and slopes (β₁). The dashed red line marks the true parameter value. The colored curve is the (normal) density of the estimator.
+* **Observations:** 
+    * Notice how the estimated lines form a 'bow-tie' shape, being most stable near the center of the data and more variable at the edges.
+    * As you increase N, the histograms of the estimators begin to follow a Normal distribution, centered around the true values.
+",
+slr_r2 = "
+Explores R-Squared (the Coefficient of Determination) by visualizing how much of the total variation in the data is captured by the regression model.
+* **Sliders:** Adjust the **True Slope** to change the strength of the dependence and **Error SD** to change the error level.
+* **Top Row:** 
+    * **Left:** Shows the regression fit.
+    * **Right:** A 'stacked' visualization of the total variation (SST) in the data, decomposed into the portion explained by the regression (SSR) and the unexplained portion (SSE). The proportion of SSR corresponding to the total is the R-squared value.
+* **Bottom Row:** A side-by-side decomposition of the variation:
+    * **SST (Total):** The total distance of points from the sample mean.
+    * **SSR (Regression):** The portion of the distance 'accounted for' by the slope of the line.
+    * **SSE (Error):** The remaining 'leftover' distance between the points and the line.
+* **Observations:** 
+    * R-squared is the ratio of SSR to SST. It represents the percentage of total variation explained by the model.
+    * When the Error SD is zero, SSR equals SST, and R-squared is exactly 1.
+    * When there is no dependence (slope=0), SSR is zero, and R-squared is 0.
+",
+slr_violation = "
+Investigates how violations of linear regression assumptions manifest in data and diagnostic plots.
+* **Interface Mode:** Switch between **Simple** (curated scenarios) and **Complex** (manual control over violation intensity).
+* **Violations Included:**
+    * **Non-linear Mean:** Breaks the assumption that the relationship is a straight line.
+    * **Heteroscedasticity:** Breaks the assumption of constant error variance (look for the 'fan' shape).
+    * **Heavy Tails:** Introduces non-normal noise (look for deviations at the ends of the Q-Q plot).
+    * **Outliers:** Introduces points with high leverage or large residuals (check residuals vs. leverage).
+* **Diagnostic Plots:**
+    * **Residuals vs Fitted:** Should show no pattern. Curves suggest non-linearity; fans suggest heteroscedasticity.
+    * **Normal Q-Q:** Points should lie on the dashed line. Curvature here suggests non-normal residuals.
+    * **Residuals vs. Leverage:** Identifies specific observations that disproportionately influence the model coefficients.
+",
+slr_bands = "
+Visualizes the influence of the data and sample size on Confidence and Prediction Intervals.
+* **Sliders:** 
+    * **Sample Size (n):** Notice how the Confidence Band (red) shrinks (in parts) almost to nothing as n increases, while the Prediction Band (blue) remains wider as it accounts for irreducible noise.
+    * **Spreads:** Increasing the X-spread improves the precision of the slope estimate (narrowing the 'waist' of the band). Increasing Error Noise (sigma) expands both bands.
+* **The Lines:**
+    * **Solid Red:** The estimated regression line: Y_hat = beta0_hat + beta1_hat * X.
+    * **Faded Black:** The 'Ground Truth' (True Model) from which the data was simulated.
+* **The Bands:**
+    * **Red Ribbon (Confidence):** Contains the true regression line with (1-alpha)% probability across repeated samples. It reflects uncertainty in our parameter estimates (the mean).
+    * **Blue Ribbon (Prediction):** Contains a new individual observation with (1-alpha)% probability. It is always wider because it includes both parameter uncertainty and the residual variance (sigma-squared).
+",
+slr_coverage = "
+This module visualizes the Frequentist definition of 'Confidence'. A 95% interval does not mean there is a 95% probability that the truth is in *this* specific interval. It means that 95% of such intervals generated by this procedure will contain the truth in the long run.
+* **Top Row: Confidence Interval (CI)**
+    * We are trying to capture the **True Mean** (the point on the dotted line) at the chosen X-value.
+    * In the history plot, a red bar indicates a 'failed' interval that does not overlap the true mean.
+* **Bottom Row: Prediction Interval (PI)**
+    * We are trying to capture a **New Individual Observation** (the purple point) at the chosen X-value.
+    * The history plot shows whether each simulation's interval successfully 'trapped' the unique random realization of that simulation's new data point.
+* **The Frequentist Takeaway:**
+    * **Coverage Probability:** Notice the 'Coverage' percentage shown in the history plots. As you increase the Number of Repetitions, this percentage will converge toward your chosen Confidence Level (1-alpha).
+    * **Randomness of the Interval:** In this framework, the 'Truth' (the mean or the point) is fixed or realized, and it is the *interval itself* that is the random variable. It hits the target 95% of the time.
+    * **Alpha as Error Rate:** If you set alpha to 0.05, you are explicitly accepting that, on average, 1 out of every 20 experiments you conduct will produce an interval that does not contain the truth.
+"
 )

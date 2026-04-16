@@ -20,63 +20,99 @@ guide_accordion <- function(text_key) {
   )
 }
 
+# Helper function for uniform button styling
+concept_btn <- function(id, label, code, color_class = "secondary") {
+  actionButton(
+    id,
+    label = HTML(paste0("<b>", label, "</b> <br><small>[", code, "]</small>")),
+    class = paste0("btn-", color_class, " m-1 py-3"),
+    style = "width: 220px; text-align: center; border-radius: 8px;"
+  )
+}
+
 # Page UI lookup table: Each entry is a function that returns the UI for that page.
 page_ui <- list(
   home = function() {
     fluidPage(
-      h2("Overview", class = "text-center my-4"),
+      # Custom CSS for the monochromatic section accents
+      tags$style(HTML("
+      .section-header { 
+        border-left: 6px solid #495057; 
+        padding-left: 15px; 
+        margin-top: 40px; 
+        margin-bottom: 20px; 
+        font-weight: 700;
+        color: #343a40;
+      }
+      /* Specific colors for section borders to match the buttons */
+      .border-desc { border-color: ##007bff !important; } /* Blue */
+      .border-limit { border-color: #0d6efd !important; } /* Cyan/Teal */
+      .border-estim { border-color: #198754 !important; } /* Green */
+      .border-hypo { border-color: #ffc107 !important; }  /* Yellow/Amber */
+      .border-reg { border-color: #dc3545 !important; }   /* Red */
+    ")),
+      
+      h1("Statistical Objects with Sliders", class = "text-center my-5 fw-bold"),
       
       # Section 1
-      h4("1. Descriptive Statistics & Distributions", class = "mt-4 mb-3 border-bottom"),
+      h4("1. Descriptive Statistics & Distributions", class = "section-header border-desc"),
       layout_column_wrap(
-        width = 1/5,
-        card(card_header("Quantiles"), p("Explore empirical quantiles..."), actionButton("go_quant", "Quantiles [D1]", class="btn-primary w-100")),
-        card(card_header("Location & Spread"), p("Compare Mean, Median, and Trimmed Mean..."),
-             layout_column_wrap(width = 1/2, actionButton("go_location", "Location [D2]", class="btn-outline-primary"),
-                                actionButton("go_spread", "Spread [D3]", class="btn-outline-primary"))),
-        card(card_header("Histograms"), p("Explore binning effects"), actionButton("go_hist", "Histogram & Binning [D6]", class="btn-primary w-100")),
-        card(card_header("Boxplots"), p("Explore IQR, whiskers, outliers"), actionButton("go_boxplot", "Boxplot [D7]", class="btn-primary w-100")),
-        card(card_header("Distributional Shapes"), p("Manipulate Skew and Kurtosis"), 
-             layout_column_wrap(width = 1/2, actionButton("go_skew", "Skew [D8]", class="btn-outline-primary"),
-                                actionButton("go_kurt", "Kurtosis [D8]", class="btn-outline-primary")))
+        width = "220px", # Fixed width for each button
+        fixed_width = TRUE,
+        concept_btn("go_quant", "Quantiles", "D1", "primary"),
+        concept_btn("go_location", "Measures of Location", "D2", "primary"),
+        concept_btn("go_spread", "Measures of Spread", "D3", "primary"),
+        concept_btn("go_hist", "Histogram", "D6", "primary"),
+        concept_btn("go_boxplot", "Boxplot", "D7", "primary"),
+        concept_btn("go_skew", "Detecting Skewness", "D8", "primary"),
+        concept_btn("go_kurt", "Detecting Kurtosis", "D8", "primary")
       ),
       
       # Section 2
-      h4("2. Limits & Asymptotics", class = "mt-5 mb-3 border-bottom"),
+      h4("2. Limits & Asymptotics", class = "section-header border-limit"),
       layout_column_wrap(
-        width = 1/2,
-        card(card_header("Law of Large Numbers"), p("Convergence of sample mean"), actionButton("go_lln", "Mean Convergence [D4]", class="btn-info w-100")),
-        card(card_header("Glivenko-Cantelli Theorem"), p("ECDF convergence"), actionButton("go_ecdf", "ECDF Convergence [D5]", class="btn-info w-100"))
+        width = "220px", fixed_width = TRUE,
+        concept_btn("go_lln", "Mean Convergence", "D4", "info"),
+        concept_btn("go_ecdf", "ECDF Convergence", "D5", "info")
       ),
       
       # Section 3
-      h4("3. Point Estimators", class = "mt-5 mb-3 border-bottom"),
+      h4("3. Point Estimators", class = "section-header border-estim"),
       layout_column_wrap(
-        width = 1/3,
-        card(card_header("MLEs for Normal Distribution"), p("Explore the concept of likelihood"), 
-             layout_column_wrap(width = 1/2, actionButton("go_norm1", "MLE for μ [D9]", class="btn-outline-success"),
-                                actionButton("go_norm2", "MLE for μ and σ [D11]", class="btn-outline-success"))),
-        card(card_header("MLEs for Bernoulli Distribution"), p("Explore the concept of likelihood"),
-             actionButton("go_bern", "MLE for p [D10]", class="btn-success w-100")),
-        card(card_header("Confidence Intervals"), p("Explore how coverage works and how parameters influence the size of confidence intervals."), 
-             actionButton("go_ci", "Confidence Intervals [D12]", class="btn-success w-100"))
+        width = "220px", fixed_width = TRUE,
+        concept_btn("go_norm1", "MLE for μ", "D9", "success"),
+        concept_btn("go_norm2", "MLE for μ & σ", "D11", "success"),
+        concept_btn("go_bern", "MLE for p", "D10", "success"),
+        concept_btn("go_ci", "Confidence Intervals", "D12", "success")
       ),
       
-      h4("4. Hypothesis Testing", class = "mt-5 mb-3 border-bottom"),
+      # Section 4
+      h4("4. Hypothesis Testing", class = "section-header border-hypo"),
       layout_column_wrap(
-        width = 1/3,
-        # cards: 1. Z-Test and T-Test, 2. p-value, testing and confidence intervals, 3. two-sample test
-        card(card_header("Testing for the Mean"), p("Explore significance level rejection rate"),
-             layout_column_wrap(width=1/2, actionButton("go_ztest", "Z-test (σ known) [D13]", class="btn-outline-warning"),
-                                actionButton("go_ttest", "t-test (σ unknown) [D15]", class="btn-outline-warning"))),
-        card(card_header("p-values & Confidence Intervals"), p("Explore the concept of p-values and how confidence intervals relate to hypothesis tests"), 
-             layout_column_wrap(width=1/2, actionButton("go_pval", "p-values for Z-test [D16]", class="btn-outline-warning"),
-             actionButton("go_test_ci", "CI vs. Z-test [D14]", class="btn-outline-warning"))),
-        card(card_header("Two-sample Tests"), p("Explore the influence of σX and σY and μX-μY"), 
-             actionButton("go_twosample", "Two-sample tests [D17]", class="btn-warning w-100"))
-      )
+        width = "220px", fixed_width = TRUE,
+        concept_btn("go_ztest", "Z-test", "D13", "warning"),
+        concept_btn("go_ttest", "t-test", "D15", "warning"),
+        concept_btn("go_pval", "p-values", "D16", "warning"),
+        concept_btn("go_test_ci", "CI vs. Z-test", "D14", "warning"),
+        concept_btn("go_twosample", "Two-sample tests", "D17", "warning")
+      ),
+      
+      # Section 5
+      h4("5. Simple Linear Regression", class = "section-header border-reg"),
+      layout_column_wrap(
+        width = "220px", fixed_width = TRUE,
+        concept_btn("go_slr_est", "SLR Estimation", "D18", "danger"),
+        concept_btn("go_slr_dist", "Coefficient Estimator Distribution", "D19", "danger"),
+        concept_btn("go_slr_bands", "Confidence and prediction bands", "D20", "danger"),
+        concept_btn("go_slr_coverage", "Coverage of conf./pred. intervals", "D21", "danger"),
+        concept_btn("go_slr_r2", "R²", "D22", "danger"),
+        concept_btn("go_slr_violation", "(Violation of) Assumptions", "D23", "danger")
+      ),
+      
+      div(style = "margin-bottom: 100px;")
     )
   },
+  
   histogram = function() {
     layout_sidebar(
       sidebar = sidebar(
@@ -95,6 +131,7 @@ page_ui <- list(
       )
     )
   },
+  
   lln = function() {
     layout_sidebar(
       sidebar = sidebar(
@@ -112,6 +149,7 @@ page_ui <- list(
       )
     )
   },
+  
   ecdf_conv = function() {
     layout_sidebar(
       sidebar = sidebar(
@@ -136,6 +174,7 @@ page_ui <- list(
       )
     )
   },
+  
   mle_norm1 = function() {
     layout_sidebar(
       sidebar = sidebar(
@@ -160,6 +199,7 @@ page_ui <- list(
       )
     )
   },
+  
   mle_norm2 = function() {
     layout_sidebar(
       sidebar = sidebar(
@@ -188,6 +228,7 @@ page_ui <- list(
       )
     )
   },
+  
   mle_bern = function() {
     layout_sidebar(
       sidebar = sidebar(
@@ -212,6 +253,7 @@ page_ui <- list(
       )
     )
   },
+  
   skew_ui = function() {
     layout_sidebar(
       sidebar = sidebar(
@@ -233,6 +275,7 @@ page_ui <- list(
       )
     )
   },
+  
   kurt_ui = function() {
     layout_sidebar(
       sidebar = sidebar(
@@ -254,6 +297,7 @@ page_ui <- list(
       )
     )
   },
+  
   location = function() {
     layout_sidebar(
       sidebar = sidebar(
@@ -271,6 +315,7 @@ page_ui <- list(
       )
     )
   },
+  
   spread = function() {
     layout_sidebar(
       sidebar = sidebar(
@@ -288,6 +333,7 @@ page_ui <- list(
       )
     )
   },
+  
   quantiles = function() {
     layout_sidebar(
       sidebar = sidebar(
@@ -317,6 +363,7 @@ page_ui <- list(
       )
     )
   },
+  
   ci = function() {
     layout_sidebar(
       sidebar = sidebar(
@@ -349,6 +396,7 @@ page_ui <- list(
       )
     )
   },
+  
   boxplot = function() {
     layout_sidebar(
       sidebar = sidebar(
@@ -364,6 +412,7 @@ page_ui <- list(
       )
     )
   },
+  
   ztest = function() {
     layout_sidebar(
       sidebar = sidebar(
@@ -400,6 +449,7 @@ page_ui <- list(
       )
     )
   },
+  
   ttest = function() {
     layout_sidebar(
       sidebar = sidebar(
@@ -436,6 +486,7 @@ page_ui <- list(
       )
     )
   },
+  
   pval = function() {
     layout_sidebar(
       sidebar = sidebar(
@@ -465,6 +516,7 @@ page_ui <- list(
       )
     )
   },
+  
   testci = function() {
     layout_sidebar(
       sidebar = sidebar(
@@ -493,6 +545,7 @@ page_ui <- list(
       )
     )
   },
+  
   twosample = function() {
     layout_sidebar(
       sidebar = sidebar(
@@ -526,5 +579,186 @@ page_ui <- list(
         )
       )
     )
+},
+
+  slr_est = function() {
+  layout_sidebar(
+    sidebar = sidebar(
+      actionButton("go_back", "← Back to Home", class="btn-secondary mb-3"),
+      hr(),
+      sliderInput("beta0_guess", "Proposed Intercept (β₀):", 
+                  min = -5, max = 5, value = 1, step = 0.05),
+      sliderInput("beta1_guess", "Proposed Slope (β₁):", 
+                  min = -5, max = 5, value = -1, step = 0.05),
+      actionButton("jump_to_min_sse", "Jump to Optimizer", class = "btn-info w-100 mt-2"),
+      actionButton("resample_slr", "New Random Data", class = "btn-warning w-100")
+    ),
+    guide_accordion("slr_est"),
+    layout_column_wrap(
+      width = 1,
+      card(
+        card_header("Data Space: Residuals & Regression Line"),
+        plotOutput("slr_data_plot", height = "350px")
+      ),
+      layout_column_wrap(
+        width = 1/3,
+        card(card_header("SSE Surface"), plotOutput("sse_surface", height = "300px")),
+        card(card_header("SSE Projection: β₀"), plotOutput("sse_beta0", height = "300px")),
+        card(card_header("SSE Projection: β₁"), plotOutput("sse_beta1", height = "300px"))
+      )
+    )
+  )
+  },
+
+  slr_dist = function() {
+  layout_sidebar(
+    sidebar = sidebar(
+      actionButton("go_back", "← Back to Home", class="btn-secondary mb-3"),
+      hr(),
+      sliderInput("n_show", "Number of Samples to Show (N):", 
+                  min = 2, max = 500, value = 50, step = 1),
+      actionButton("resample_dist", "Generate New Simulations", class = "btn-warning w-100")
+    ),
+    guide_accordion("slr_dist"),
+    layout_column_wrap(
+      width = 1,
+      card(
+        card_header("Sampling Variability: The 'Shadow' Lines"),
+        plotOutput("slr_shadow_plot", height = "400px")
+      ),
+      layout_column_wrap(
+        width = 1/2,
+        card(card_header("Distribution of Intercept Estimator (β̂₀)"), 
+             plotOutput("dist_beta0", height = "300px")),
+        card(card_header("Distribution of Slope Estimator (β̂₁)"), 
+             plotOutput("dist_beta1", height = "300px"))
+      )
+    )
+  )
+},
+
+  slr_r2 = function() {
+  layout_sidebar(
+    sidebar = sidebar(
+      actionButton("go_back", "← Back to Home", class="btn-secondary mb-3"),
+      hr(),
+      sliderInput("true_slope_r2", "True Slope (β₁):", 
+                  min = -4, max = 4, value = 2, step = 0.1),
+      sliderInput("true_sd_r2", "Error SD (σ):", 
+                  min = 0.1, max = 5, value = 2, step = 0.1),
+      actionButton("resample_r2", "Generate New Noise", class = "btn-warning w-100")
+    ),
+    guide_accordion("slr_r2"),
+    layout_column_wrap(
+      width = 1,
+      layout_column_wrap(
+        width = 1/2, # Splits the top row into two columns
+        card(
+          card_header("R² Visualization: Variation Explained"),
+          plotOutput("r2_main_plot", height = "350px")
+        ),
+        card(
+          card_header("The R² Energy Bar (SSR / SST)"),
+          plotOutput("r2_energy_bar", height = "350px")
+        )
+      ),
+      card(
+        card_header("Sum of Squares Decomposition: SST = SSR + SSE"),
+        plotOutput("r2_decomp_plot", height = "300px")
+      )
+    )
+  )
+},
+
+  slr_violation = function() {
+  layout_sidebar(
+    sidebar = sidebar(
+      actionButton("go_back", "← Back to Home", class="btn-secondary mb-3"),
+      hr(),
+      radioButtons("ui_mode", "Interface Mode:", 
+                   choices = c("Simple (Scenarios)" = "simple", "Complex (Sandbox)" = "complex")),
+      conditionalPanel(
+        condition = "input.ui_mode == 'simple'",
+        selectInput("scenario", "Select Violation:",
+                    choices = c("Everything is Fine" = "none",
+                                "Non-linear Mean" = "nonlinear",
+                                "Heteroscedasticity" = "hetero",
+                                "Heavy Tails" = "tails",
+                                "Influential Outliers" = "outliers"))
+      ),
+      conditionalPanel(
+        condition = "input.ui_mode == 'complex'",
+        sliderInput("nl_strength", "Non-linearity (Quadratic):", min = 0, max = 2, value = 0, step = 0.1),
+        sliderInput("het_strength", "Heteroscedasticity:", min = 0, max = 3, value = 0, step = 0.1),
+        sliderInput("tail_df", "Tail Heaviness (t-dist df):", min = 1, max = 30, value = 30, step = 1),
+        sliderInput("outlier_count", "Number of Outliers:", min = 0, max = 5, value = 0, step = 1),
+        sliderInput("outlier_dist", "Outlier Severity:", min = 0, max = 20, value = 10, step = 1)
+      ),
+      actionButton("resample_assumptions", "New Random Seed", class = "btn-warning w-100 mt-3")
+    ),
+    guide_accordion("slr_violation"),
+    layout_column_wrap(
+      width = 1,
+      card(card_header("Data Space & Fitted Line"), plotOutput("assumption_main_plot", height = "350px")),
+      card(
+        card_header("Standard Diagnostic Plots (Base R)"),
+        layout_column_wrap(width = 1/2,
+                           plotOutput("diag_1", height = "250px"), plotOutput("diag_2", height = "250px"),
+                           plotOutput("diag_3", height = "250px"), plotOutput("diag_4", height = "250px")
+        )
+      )
+    )
+  )
+},
+
+  slr_bands = function() {
+    layout_sidebar(
+      sidebar = sidebar(
+        actionButton("go_back", "← Back to Home", class="btn-secondary mb-3"),
+        hr(),
+        sliderInput("slr_n", "Sample Size (n):", min = 5, max = 100, value = 30, step = 1),
+        sliderInput("slr_alpha", "Confidence Level (1-α):", min = 0.50, max = 0.99, value = 0.90, step = 0.01),
+        sliderInput("slr_x_spread", "X-Value Spread:", min = 0.5, max = 5, value = 1, step = 0.1),
+        sliderInput("slr_y_spread", "Error Noise (σ):", min = 0.1, max = 5, value = 1, step = 0.1),
+        actionButton("resample_slr", "New Random Data", class = "btn-warning w-100 mt-2")
+      ),
+      guide_accordion("slr_bands"),
+      card(
+        card_header("Simple Linear Regression: Confidence vs. Prediction Bands"),
+        plotOutput("slrPlot", height = "600px")
+      )
+    )
+},
+
+  slr_coverage = function() {
+  layout_sidebar(
+    sidebar = sidebar(
+      actionButton("go_back", "← Back to Home", class="btn-secondary mb-3"),
+      hr(),
+      sliderInput("cov_n", "Sample Size (n):", min = 5, max = 100, value = 30),
+      sliderInput("cov_alpha", "Confidence Level (1-alpha):", min = 0.5, max = 0.99, value = 0.90, step = 0.01),
+      sliderInput("cov_N_sims", "Number of Repetitions:", min = 10, max = 100, value = 25),
+      sliderInput("cov_xval", "X-Value for Interval Estimation:", min = -3, max = 3, value = 1, step = 0.1),
+      hr(),
+      actionButton("resample_cov", "Generate New Samples", class = "btn-warning w-100"),
+      helpText("Generates new true coefficients and a new set of random error realizations.")
+    ),
+    guide_accordion("slr_coverage"),
+    layout_column_wrap(
+      width = 1,
+      # Row 1: Confidence Interval (The Mean)
+      layout_column_wrap(
+        width = 1/2,
+        card(card_header("CI: Current Simulation (Live)"), plotOutput("ci_live_plot", height = "350px")),
+        card(card_header("CI: Coverage History"), plotOutput("ci_hist_plot", height = "350px"))
+      ),
+      # Row 2: Prediction Interval (The Individual)
+      layout_column_wrap(
+        width = 1/2,
+        card(card_header("PI: Current Simulation (Live)"), plotOutput("pi_live_plot", height = "350px")),
+        card(card_header("PI: Coverage History"), plotOutput("pi_hist_plot", height = "350px"))
+      )
+    )
+  )
 }
 )

@@ -27,6 +27,7 @@ server <- function(input, output, session) {
   current_page <- reactiveVal("home")
   
   # --- Navigation mapping ---
+  
   nav_buttons <- list(
     go_hist = "histogram", go_lln = "lln", go_ecdf = "ecdf_conv", 
     go_location = "location", go_kurt = "kurt_ui", 
@@ -34,14 +35,19 @@ server <- function(input, output, session) {
     go_ci = "ci", go_boxplot = "boxplot", go_back = "home",
     go_norm1 = "mle_norm1", go_norm2 = "mle_norm2", go_bern = "mle_bern",
     go_ztest = "ztest", go_ttest = "ttest", go_pval = "pval", 
-    go_test_ci = "testci", go_twosample = "twosample"
+    go_test_ci = "testci", go_twosample = "twosample", 
+    go_slr_est = "slr_est", go_slr_dist = "slr_dist", go_slr_r2 = "slr_r2", 
+    go_slr_violation = "slr_violation", go_slr_bands = "slr_bands",
+    go_slr_coverage = "slr_coverage"
   )
   
   call_functions <- list(
     histogram = hist_logic, lln = lln_logic, ecdf_conv = ecdf_logic, location = location_logic,
     kurt_ui = kurt_logic, skew_ui = skew_logic, spread = spread_logic, quantiles = quantile_logic, ci = ci_logic, boxplot = boxplot_logic,
     mle_norm1 = mle_norm1_logic, mle_norm2 = mle_norm2_logic, mle_bern = mle_bern_logic,
-    ztest = ztest_logic, ttest = ttest_logic, pval = pval_logic, twosample = twosample_logic, testci = testci_logic
+    ztest = ztest_logic, ttest = ttest_logic, pval = pval_logic, twosample = twosample_logic, testci = testci_logic, 
+    slr_est = slr_est_logic, slr_dist = slr_dist_logic, slr_r2 = slr_r2_logic, slr_violation = slr_violation_logic,
+    slr_bands = slr_bands_logic, slr_coverage = slr_coverage_logic
   )
   
   lapply(names(nav_buttons), function(btn) {
@@ -68,7 +74,6 @@ server <- function(input, output, session) {
 # --- Base UI with placeholder for dynamic content ---
 ui <- fluidPage(
   theme = bs_theme(version = 5, bootswatch = "flatly"),
-  titlePanel("Statistical Objects with Sliders"),
   title = "SOS",
   
   # Dynamic UI Container

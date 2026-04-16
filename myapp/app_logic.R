@@ -165,8 +165,6 @@ ecdf_logic <- function(input, output, session) {
   
 }
 
-
-
 skew_logic <- function(input, output, session) {
   
   # Reactive parameters for a standardized Gamma
@@ -487,7 +485,6 @@ kurt_logic <- function(input, output, session) {
   }, striped = TRUE, width = "100%")
 }
 
-
 spread_logic <- function(input, output, session) {
   
   # --- Data generation ---
@@ -784,7 +781,6 @@ location_logic <- function(input, output, session) {
   
 }
 
-
 quantile_logic <- function(input, output, session) {
   
   # --- Data generation ---
@@ -1061,8 +1057,6 @@ boxplot_logic <- function(input, output, session) {
            bty = "n", cex = 1.1, title = "Point Classification", title.font = 2)
   })
 }
-
-
 
 mle_norm1_logic <- function(input, output, session) {
   
@@ -1408,7 +1402,6 @@ mle_bern_logic <- function(input, output, session) {
   })
 }
 
-
 ci_logic <- function(input, output, session) {
   
   # --- Master data: 100 samples of size 100 from N(0,1) ---
@@ -1574,11 +1567,6 @@ ci_logic <- function(input, output, session) {
   })
   
 }
-
-
-# chapter 3
-# add ztest = ztest_logic, ttest = ttest_logic, pval = pval_logic, twosample = twosample_logic
-
 
 ztest_logic <- function(input, output, session) {
   
@@ -2059,7 +2047,6 @@ pval_logic <- function(input, output, session) {
   })
 }
 
-
 testci_logic <- function(input, output, session) {
     # --- Master data generation ---
     dual_master_data <- reactiveVal(rnorm(100))
@@ -2289,4 +2276,743 @@ twosample_logic <- function(input, output, session) {
     legend("topright", legend = c("Sample Mean 1", "Sample Mean 2", "Difference (1-2)"),
            col = c("#007bff", "#28a745", "darkred"), lty = c(2, 2, 1), lwd = 2, bty = "n")
   })
+}
+
+slr_est_logic <- function(input, output, session) {
+    
+    # --- Data generation ---
+    # Generates 20 points where true coefficients are at least |0.5| away from zero
+    generate_slr_data <- function() {
+      x <- seq(-2, 2, length.out = 20)
+      
+      # Ensure a visible slope and intercept offset
+      b0_true <- runif(1, 0.8, 2) * sample(c(-1, 1), 1)
+      b1_true <- runif(1, 0.8, 2) * sample(c(-1, 1), 1)
+      
+      y <- b0_true + b1_true * x + rnorm(20, sd = 0.5)
+      data.frame(x = x, y = y)
+    }
+    
+    slr_data <- reactiveVal(generate_slr_data())
+    
+    observeEvent(input$resample_slr, {
+      slr_data(generate_slr_data())
+    })
+    
+    observeEvent(input$jump_to_min_sse, {
+      dat <- slr_data()
+      fit <- lm(y ~ x, data = dat)
+      
+      updateSliderInput(session, "beta0_guess", value = as.numeric(coef(fit)[1]))
+      updateSliderInput(session, "beta1_guess", value = as.numeric(coef(fit)[2]))
+    })
+    
+    # Helper for SSE calculation
+    calc_sse <- function(dat, b0, b1) {
+      sum((dat$y - (b0 + b1 * dat$x))^2)
+    }
+    
+    # --- 1. Intuition Plot (Data & Residuals) ---
+    
+    output$slr_data_plot <- renderPlot({
+      req(slr_data(), input$beta0_guess, input$beta1_guess) # Ensure values exist
+      dat <- slr_data()
+      b0 <- input$beta0_guess
+      b1 <- input$beta1_guess
+
+      dat$y_hat <- b0 + b1 * dat$x
+      current_sse <- calc_sse(dat, b0, b1)
+      plot(c(0,1), c(0,1))
+
+      ggplot(dat, aes(x = x, y = y)) +
+        geom_segment(
+          aes(xend = x, yend = y_hat),
+          color = "steelblue", linetype = "dashed", linewidth = 0.8
+        ) +
+        geom_point(size = 3) +
+        geom_abline(intercept = b0, slope = b1, color = "firebrick", linewidth = 1.5) +
+        # Use coord_cartesian but ensure it's wide enough for your random data
+        coord_cartesian(xlim = c(-2.5, 2.5), ylim = c(-8, 8)) +
+        annotate("label", x = -1.5, y = 7,
+                 label = paste("SSE =", round(current_sse, 2)), fill = "white") +
+        theme_minimal(base_size = 14)
+  
+    })
+    
+    # --- 2. SSE Surface ---
+    
+    output$sse_surface <- renderPlot({
+      req(slr_data(), input$beta0_guess, input$beta1_guess)
+      dat <- slr_data()
+      
+      grid_res <- 40 # Lower resolution slightly for faster rendering
+      b0_seq <- seq(-5, 5, length.out = grid_res)
+      b1_seq <- seq(-5, 5, length.out = grid_res)
+      
+      reg_coefs <- lm(y ~ x, data = dat)$coef
+      
+      df_grid <- expand.grid(b0 = b0_seq, b1 = b1_seq)
+      
+      # Ensure calculation is clean
+      df_grid$sse <- mapply(function(b0_val, b1_val) {
+        sum((dat$y - (b0_val + b1_val * dat$x))^2)
+      }, df_grid$b0, df_grid$b1)
+      
+      ggplot(df_grid, aes(x = b1, y = b0)) +
+        geom_raster(aes(fill = sse), interpolate = TRUE) +
+        # add optimizer as point
+        annotate("point", x = reg_coefs[2], y = reg_coefs[1], color = "blue", size = 5, shape = 18) +
+        scale_fill_viridis_c(option = "magma", direction = -1) +
+        # Provide explicit data to annotate to avoid length mismatches
+        annotate("point", x = input$beta1_guess, y = input$beta0_guess, 
+                 color = "red", size = 5, shape = 18) +
+        # Add expand=c(0,0) to fill the card
+        scale_x_continuous(expand = c(0, 0)) + 
+        scale_y_continuous(expand = c(0, 0)) +
+        labs(x = expression(beta[1]~(Slope)), y = expression(beta[0]~(Intercept))) +
+        theme_minimal() +
+        theme(legend.position = "none") # Heatmaps look cleaner without the legend
+    })
+    
+    # --- 3. SSE Projection: Beta 0 ---
+    
+    output$sse_beta0 <- renderPlot({
+      dat <- slr_data()
+      b1_fixed <- input$beta1_guess
+      b0_range <- seq(-5, 5, length.out = 200)
+      
+      df_line <- data.frame(
+        b0 = b0_range, 
+        sse = sapply(b0_range, function(b0) calc_sse(dat, b0, b1_fixed))
+      )
+      
+      reg_coefs <- lm(y ~ x, data = dat)$coef
+      reg_sse <- calc_sse(dat, reg_coefs[1], b1_fixed)
+      
+      current_sse <- calc_sse(dat, input$beta0_guess, b1_fixed)
+      
+      ggplot(df_line, aes(x = b0, y = sse)) +
+        geom_line(color = "darkgreen", linewidth = 1) +
+        # blue point at optimizer
+        geom_point(data = data.frame(x = reg_coefs[1], y = reg_sse), 
+                   aes(x = x, y = y), color = "blue", size = 4) +
+        # Use a 1-row data frame to avoid the "length 1 vs 200" warning
+        geom_point(data = data.frame(x = input$beta0_guess, y = current_sse), 
+                   aes(x = x, y = y), color = "red", size = 4) +
+        labs(x = expression(beta[0]), y = "SSE", subtitle = "Slice at current Slope") +
+        theme_minimal()
+    })
+    
+    # --- 4. SSE Projection: Beta 1 ---
+    
+    output$sse_beta1 <- renderPlot({
+      dat <- slr_data()
+      b0_fixed <- input$beta0_guess
+      b1_range <- seq(-5, 5, length.out = 200)
+      
+      df_line <- data.frame(
+        b1 = b1_range, 
+        sse = sapply(b1_range, function(b1) calc_sse(dat, b0_fixed, b1))
+      )
+      
+      reg_coefs <- lm(y ~ x, data = dat)$coef
+      reg_sse <- calc_sse(dat, b0_fixed, reg_coefs[2])
+      
+      current_sse <- calc_sse(dat, b0_fixed, input$beta1_guess)
+      
+      ggplot(df_line, aes(x = b1, y = sse)) +
+        geom_line(color = "purple", linewidth = 1) +
+        # blue point at optimizer
+        geom_point(data = data.frame(x = reg_coefs[2], y = reg_sse), 
+                   aes(x = x, y = y), color = "blue", size = 4) +
+        # Use a 1-row data frame to avoid the "length 1 vs 200" warning
+        geom_point(data = data.frame(x = input$beta1_guess, y = current_sse), 
+                   aes(x = x, y = y), color = "red", size = 4) +
+        labs(x = expression(beta[1]), y = "SSE", subtitle = "Slice at current Intercept") +
+        theme_minimal()
+    })
+  }
+
+slr_dist_logic <- function(input, output, session) {
+  
+  # --- Simulation Engine ---
+  # Generates 500 regressions based on a fixed "True" model
+  sim_results <- reactiveVal({
+    # Initial seed data
+    data.frame(intercept = numeric(0), slope = numeric(0))
+  })
+  
+  true_params <- reactiveVal(list(b0 = 1.5, b1 = -0.8))
+  
+  observeEvent(input$resample_dist, {
+    # 1. Randomize the "True" underlying model
+    b0_t <- runif(1, 0.8, 2) * sample(c(-1, 1), 1)
+    b1_t <- runif(1, 0.8, 2) * sample(c(-1, 1), 1)
+    true_params(list(b0 = b0_t, b1 = b1_t))
+    
+    # 2. Run 500 simulations
+    x_fixed <- seq(-2, 2, length.out = 20)
+    
+    results <- replicate(500, {
+      y <- b0_t + b1_t * x_fixed + rnorm(20, sd = 3)
+      coef(lm(y ~ x_fixed))
+    })
+    
+    sim_results(data.frame(
+      intercept = results[1, ],
+      slope = results[2, ]
+    ))
+  }, ignoreNULL = FALSE) # Runs once at startup
+  
+  # --- 1. Shadow Plot ---
+  output$slr_shadow_plot <- renderPlot({
+    req(sim_results(), true_params())
+    
+    # Filter based on slider
+    show_df <- head(sim_results(), input$n_show)
+    tp <- true_params()
+    
+    # compute sensible y-value for text
+    ytext <- tp$b0 + 1.5 * tp$b1 # y-value at x=0 for the true line
+    
+    ggplot() +
+      # The "Shadow" estimated lines
+      geom_abline(data = show_df, aes(intercept = intercept, slope = slope), 
+                  color = "steelblue", alpha = 0.2, linewidth = 0.5) +
+      # The TRUE line (Fixed ground truth)
+      geom_abline(intercept = tp$b0, slope = tp$b1, 
+                  color = "firebrick", linewidth = 2) +
+      # add vertical line at 0 with label "mean of predictors xbar"
+      geom_vline(xintercept = 0, linetype = "dashed", color = "gray50") +
+      annotate("text", x = 0, y = ytext, label = "Mean of Predictors (x̄)", 
+               color = "gray50", fontface = "italic", vjust = -1.5) +
+      coord_cartesian(xlim = c(-2.5, 2.5), ylim = c(-8, 8)) +
+      labs(subtitle = paste("Red line = True Model | Blue lines =", input$n_show, "Estimated Models"),
+           x = "x", y = "y") +
+      theme_minimal(base_size = 14)
+  })
+  
+  # --- 2. Intercept Histogram ---
+  output$dist_beta0 <- renderPlot({
+    req(sim_results())
+    df <- head(sim_results(), input$n_show)
+    tp <- true_params()
+    
+    ggplot(df, aes(x = intercept)) +
+      geom_histogram(aes(y = after_stat(density)), bins = 20, 
+                     fill = "purple", alpha = 0.4, color = "white") +
+      stat_function(fun = dnorm, 
+                    args = list(mean = mean(df$intercept), sd = sd(df$intercept)),
+                    color = "purple", linewidth = 1) +
+      geom_vline(xintercept = tp$b0, color = "firebrick", linewidth = 1, linetype = "dashed") +
+      labs(x = expression(hat(beta)[0]), y = "Density") +
+      theme_minimal()
+  })
+  
+  # --- 3. Slope Histogram ---
+  output$dist_beta1 <- renderPlot({
+    req(sim_results())
+    df <- head(sim_results(), input$n_show)
+    tp <- true_params()
+    
+    ggplot(df, aes(x = slope)) +
+      geom_histogram(aes(y = after_stat(density)), bins = 20, 
+                     fill = "darkgreen", alpha = 0.4, color = "white") +
+      stat_function(fun = dnorm, 
+                    args = list(mean = mean(df$slope), sd = sd(df$slope)),
+                    color = "darkgreen", linewidth = 1) +
+      geom_vline(xintercept = tp$b1, color = "firebrick", linewidth = 1, linetype = "dashed") +
+      labs(x = expression(hat(beta)[1]), y = "Density") +
+      theme_minimal()
+  })
+}
+
+slr_bands_logic <- function(input, output, session) {
+  
+  # --- Data generation ---
+  # We store the base data AND the pre-calculated plot limits here
+  data_store <- reactiveVal({
+    set.seed(123)
+    x_base <- runif(100, -2, 2)
+    e_base <- rnorm(100, 0, 1)
+    
+    # random coefficients, between -2 and -0.5 or 0.5 and 2
+    b0 <- runif(1, 0.5, 2) * sample(c(-1, 1), 1)
+    b1 <- runif(1, 0.3, 0.7) * sample(c(-1, 1), 1)
+    
+    # Calculate limits assuming maximum slider values (x_spread=5, y_spread=5)
+    # plus a little padding for the bands
+    list(
+      df = data.frame(x_base = x_base, e_base = e_base),
+      lims = list(
+        x = c(-2, 2) * 5.5, # max x_spread + padding
+        y = c(-8, 10)       # Heuristic based on intercept + max slope*x + max noise
+      ),
+      b0 = b0, b1 = b1
+    )
+  })
+  
+  observeEvent(input$resample_slr, {
+    x_base <- runif(100, -2, 2)
+    e_base <- rnorm(100, 0, 1)
+    
+    # recalculate true coefs
+    b0 <- runif(1, 0.5, 2) * sample(c(-1, 1), 1)
+    b1 <- runif(1, 0.5, 2) * sample(c(-1, 1), 1)
+    
+    # Re-calculate limits based on the new random draw
+    # We use the max slider values to ensure the view stays fixed while sliding
+    max_x <- max(abs(x_base)) * 5 * 1.1
+    max_y <- (b1 * max_x) + (max(abs(e_base)) * 5) + 2 
+    
+    data_store(list(
+      df = data.frame(x_base = x_base, e_base = e_base),
+      lims = list(x = c(-max_x, max_x), y = c(b0 - max_y, b0 + max_y)),
+      b0 = b0, b1 = b1
+    ))
+  })
+  
+  # Processed data based on sliders
+  processed_data <- reactive({
+    ds <- data_store()
+    df <- ds$df[1:input$slr_n, ]
+    df$x <- df$x_base * input$slr_x_spread
+    df$y <- ds$b0 + (ds$b1 * df$x) + (df$e_base * input$slr_y_spread)
+    return(df)
+  })
+  
+  output$slrPlot <- renderPlot({
+    df <- processed_data()
+    alpha <- 1 - input$slr_alpha
+    lims <- data_store()$lims
+    
+    b0 <- data_store()$b0
+    b1 <- data_store()$b1
+    
+    model <- lm(y ~ x, data = df)
+    
+    # Grid for bands covers the whole visible X range
+    grid <- data.frame(x = seq(lims$x[1], lims$x[2], length.out = 250))
+    
+    conf_band <- predict(model, newdata = grid, interval = "confidence", level = 1 - alpha)
+    pred_band <- predict(model, newdata = grid, interval = "prediction", level = 1 - alpha)
+    
+    df_bands <- cbind(grid, as.data.frame(conf_band))
+    names(df_bands) <- c("x", "fit", "c_lwr", "c_upr")
+    df_bands$p_lwr <- pred_band[, "lwr"]
+    df_bands$p_upr <- pred_band[, "upr"]
+    
+    ggplot(df, aes(x = x, y = y)) +
+      # Prediction Band (PI)
+      geom_ribbon(data = df_bands, aes(y = fit, ymin = p_lwr, ymax = p_upr), 
+                  fill = "steelblue", alpha = 0.15) +
+      geom_line(data = df_bands, aes(x = x, y = p_lwr), color = "steelblue", linetype = "dotted") +
+      geom_line(data = df_bands, aes(x = x, y = p_upr), color = "steelblue", linetype = "dotted") +
+      # Confidence Band (CI)
+      geom_ribbon(data = df_bands, aes(y = fit, ymin = c_lwr, ymax = c_upr), 
+                  fill = "firebrick", alpha = 0.3) +
+      geom_line(data = df_bands, aes(x = x, y = c_lwr), color = "firebrick", linetype = "dashed") +
+      geom_line(data = df_bands, aes(x = x, y = c_upr), color = "firebrick", linetype = "dashed") +
+      # Ground Truth
+      geom_abline(intercept = b0, slope = b1, color = "black", linewidth = 1, alpha = 0.5) +
+      # Estimated Line
+      geom_line(data = df_bands, aes(x = x, y = fit), color = "firebrick", linewidth = 1.2) +
+      # Data Points
+      geom_point(shape = 21, fill = "white", size = 2.5, stroke = 1) +
+      # --- FIXED LIMITS HERE ---
+      coord_cartesian(xlim = lims$x, ylim = lims$y) +
+      labs(
+        title = "Inference in Linear Regression",
+        subtitle = "Red = Confidence Band (Mean); Blue = Prediction Band (Individual observations)",
+        caption = "Solid red line: Estimated regression line | Faded black line: Ground truth",
+        x = "Predictor (X)",
+        y = "Response (Y)"
+      ) +
+      theme_minimal(base_size = 16)
+  })
+}
+
+slr_coverage_logic <- function(input, output, session) {
+  
+  # --- Central Data Store (The Universe) ---
+  universe <- reactiveVal({
+    set.seed(123)
+    
+    # Initial setup
+    b0 <- runif(1, 0.5, 2) * sample(c(-1, 1), 1)
+    b1 <- runif(1, 0.5, 2) * sample(c(-1, 1), 1)
+    
+    # Pre-generate a large buffer of noise (100 pts x 200 sims)
+    x_buffer <- lapply(1:200, function(i) runif(100, -3, 3))
+    e_buffer <- lapply(1:200, function(i) rnorm(100, 0, 1.5))
+    new_obs_e <- rnorm(200, 0, 1.5) # Error for the 'future' point
+    
+    # Static limits based on the fixed spread
+    # b0 + b1*x + 3*sigma
+    list(b0 = b0, b1 = b1, xb = x_buffer, eb = e_buffer, ne = new_obs_e,
+         lims = list(x = c(-3.5, 3.5), y = c(b0 - 8, b0 + 8)))
+  })
+  
+  observeEvent(input$resample_cov, {
+    b0 <- runif(1, 0.5, 2) * sample(c(-1, 1), 1)
+    b1 <- runif(1, 0.5, 2) * sample(c(-1, 1), 1)
+    universe(list(
+      b0 = b0, b1 = b1, 
+      xb = lapply(1:200, function(i) runif(100, -3, 3)),
+      eb = lapply(1:200, function(i) rnorm(100, 0, 1.5)),
+      ne = rnorm(200, 0, 1.5),
+      lims = list(x = c(-3.5, 3.5), y = c(b0 - 8, b0 + 8))
+    ))
+  })
+  
+  # --- Compute All Interval Data ---
+  sim_data <- reactive({
+    uni <- universe()
+    n <- input$cov_n
+    level <- input$cov_alpha
+    
+    results <- lapply(1:input$cov_N_sims, function(i) {
+      x <- uni$xb[[i]][1:n]
+      y <- uni$b0 + uni$b1 * x + uni$eb[[i]][1:n]
+      model <- lm(y ~ x)
+      
+      xval <- input$cov_xval
+      
+      # Targeted evaluation at X = 0
+      target <- data.frame(x = xval)
+      true_mean <- uni$b0 + uni$b1 * xval
+      true_obs  <- uni$b0 + uni$b1 * xval + uni$ne[i]
+      
+      ci <- predict(model, target, interval = "confidence", level = level)
+      pi <- predict(model, target, interval = "prediction", level = level)
+      
+      data.frame(
+        id = i, true_mean = true_mean, true_obs = true_obs,
+        ci_lwr = ci[1,2], ci_upr = ci[1,3],
+        pi_lwr = pi[1,2], pi_upr = pi[1,3],
+        ci_covers = (true_mean >= ci[1,2] & true_mean <= ci[1,3]),
+        pi_covers = (true_obs >= pi[1,2] & true_obs <= pi[1,3])
+      )
+    })
+    do.call(rbind, results)
+  })
+  
+  
+  # --- Rendering Plots ---
+  
+  # 1. CI LIVE
+  output$ci_live_plot <- renderPlot({
+    
+    uni <- universe()
+    res <- sim_data()[1, ]
+    n <- input$cov_n
+    
+    # 1. Prepare data for the current simulation points
+    df <- data.frame(
+      x = uni$xb[[1]][1:n],
+      y = uni$b0 + uni$b1 * uni$xb[[1]][1:n] + uni$eb[[1]][1:n]
+    )
+    
+    # 2. Fit model and generate Prediction Bands for the entire X range
+    mod <- lm(y ~ x, data = df)
+    grid_x <- seq(uni$lims$x[1], uni$lims$x[2], length.out = 100)
+    p_bands <- predict(mod, newdata = data.frame(x = grid_x), interval = "confidence", level = input$cov_alpha)
+    
+    df_p <- data.frame(
+      x = grid_x,
+      fit = p_bands[, "fit"],
+      lwr = p_bands[, "lwr"],
+      upr = p_bands[, "upr"]
+    )
+    
+    
+    ggplot(df, aes(x, y)) +
+      geom_point(alpha = 0.4) +
+      geom_ribbon(data = df_p, aes(x = x, ymin = lwr, ymax = upr), 
+                  fill = "firebrick", alpha = 0.1, inherit.aes = FALSE) +
+      geom_line(data = df_p, aes(x = x, y = fit), 
+                color = "firebrick", linewidth = 1, inherit.aes = FALSE) +
+      geom_point(alpha = 0.4) +
+      geom_abline(intercept = uni$b0, slope = uni$b1, linetype = "dotted", linewidth = 1) +
+      annotate("errorbar", x = input$cov_xval, ymin = res$ci_lwr, ymax = res$ci_upr, 
+               color = "black", linewidth = 1.5, width = 0.2) +
+      # Labeling the components
+      annotate("text", x = uni$lims$x[2] + 0.2, y = uni$b0 + uni$b1 * uni$lims$x[2], 
+               label = "True Mean Line", hjust = 1.1, vjust = -1, fontface = "italic") +
+      annotate("label", x = input$cov_xval, y = res$ci_upr, 
+               label = "Confidence Interval", vjust = -0.5, fill = "firebrick", color = "white", fontface = "bold") +
+      coord_cartesian(xlim = uni$lims$x, ylim = uni$lims$y) +
+      labs(subtitle = paste0("Estimating the Mean Line (Evaluating at X = ", input$cov_xval, ")"), 
+           x = "X", y = "Y") + 
+      theme_minimal()
+  })
+  
+  # 2. CI HISTORY
+  output$ci_hist_plot <- renderPlot({
+    res <- sim_data(); uni <- universe()
+    ggplot(res, aes(x = id, y = true_mean)) +
+      geom_errorbar(aes(ymin = ci_lwr, ymax = ci_upr, color = ci_covers)) +
+      geom_hline(yintercept = uni$b0 + uni$b1 * input$cov_xval, linetype = "dashed", alpha = 0.5, color="black", linewidth=1.5) +
+      scale_color_manual(values = c("TRUE" = "steelblue", "FALSE" = "firebrick")) +
+      annotate("label", x = Inf, y = Inf, label = paste0("Coverage: ", round(mean(res$ci_covers)*100, 1), "%"), hjust = 1.1, vjust = 1.5) +
+      labs(x = "Simulations", y = "Interval Range", color = "Covers?") + theme_minimal() + theme(legend.position = "none")
+  })
+  
+  # 3. PI LIVE (Fixed geom_ribbon and aesthetics)
+  output$pi_live_plot <- renderPlot({
+    uni <- universe()
+    res <- sim_data()[1, ]
+    n <- input$cov_n
+    
+    # 1. Prepare data for the current simulation points
+    df <- data.frame(
+      x = uni$xb[[1]][1:n],
+      y = uni$b0 + uni$b1 * uni$xb[[1]][1:n] + uni$eb[[1]][1:n]
+    )
+    
+    # 2. Fit model and generate Prediction Bands for the entire X range
+    mod <- lm(y ~ x, data = df)
+    grid_x <- seq(uni$lims$x[1], uni$lims$x[2], length.out = 100)
+    p_bands <- predict(mod, newdata = data.frame(x = grid_x), interval = "prediction", level = input$cov_alpha)
+    
+    df_p <- data.frame(
+      x = grid_x,
+      fit = p_bands[, "fit"],
+      lwr = p_bands[, "lwr"],
+      upr = p_bands[, "upr"]
+    )
+    
+    ggplot(df, aes(x = x, y = y)) +
+      geom_ribbon(data = df_p, aes(x = x, ymin = lwr, ymax = upr), 
+                  fill = "steelblue", alpha = 0.1, inherit.aes = FALSE) +
+      geom_line(data = df_p, aes(x = x, y = fit), 
+                color = "steelblue", linewidth = 1, inherit.aes = FALSE) +
+      geom_point(alpha = 0.4) +
+      geom_abline(intercept = uni$b0, slope = uni$b1, linetype = "dotted", linewidth = 1) +
+      annotate("errorbar", x = input$cov_xval, ymin = res$pi_lwr, ymax = res$pi_upr, 
+               color = "steelblue", linewidth = 1.5, width = 0.4) +
+      annotate("point", x = input$cov_xval, y = res$true_obs, color = "purple", size = 4) +
+      # Labeling the components
+      annotate("label", x = input$cov_xval, y = res$pi_upr, 
+               label = "Prediction Interval", vjust = -0.5, fill = "steelblue", color = "white", fontface = "bold") +
+      annotate("text", x = input$cov_xval, y = res$true_obs, 
+               label = "New Observation", hjust = -0.2, color = "purple", fontface = "bold") +
+      coord_cartesian(xlim = uni$lims$x, ylim = uni$lims$y) +
+      labs(
+        subtitle = "Predicting a New Individual (Purple Point)",
+        x = "Predictor (X)", 
+        y = "Response (Y)"
+      ) + 
+      theme_minimal()
+  })
+  
+  # 4. PI HISTORY
+  output$pi_hist_plot <- renderPlot({
+    res <- sim_data()
+    ggplot(res, aes(x = id, y = true_obs)) +
+      geom_errorbar(aes(ymin = pi_lwr, ymax = pi_upr, color = pi_covers)) +
+      geom_point(color = "purple", size = 4, alpha = 0.6) +
+      scale_color_manual(values = c("TRUE" = "steelblue", "FALSE" = "firebrick")) +
+      annotate("label", x = Inf, y = Inf, label = paste0("Coverage: ", round(mean(res$pi_covers)*100, 1), "%"), hjust = 1.1, vjust = 1.5) +
+      labs(x = "Simulations", y = "Interval Range", color = "Covers?") + theme_minimal() + theme(legend.position = "none")
+  })
+}
+
+slr_r2_logic <- function(input, output, session) {
+  # --- Data generation ---
+  # Reduced n to 15 and randomized X for better scannability
+  r2_base_data <- reactiveVal({
+    set.seed(123)
+    x <- sort(runif(15, -3, 3)) # Randomly spaced X
+    z <- rnorm(15)              # Standard normal noise
+    list(x = x, z = z)
+  })
+  
+  observeEvent(input$resample_r2, {
+    base <- r2_base_data()
+    r2_base_data(list(x = base$x, z = rnorm(15)))
+  })
+  
+  # Reactive data frame that responds to sliders
+  r2_data <- reactive({
+    base <- r2_base_data()
+    b1 <- input$true_slope_r2
+    sigma <- input$true_sd_r2
+    
+    y <- b1 * base$x + (sigma * base$z)
+    df <- data.frame(x = base$x, y = y)
+    
+    # Calculate components
+    fit <- lm(y ~ x, data = df)
+    df$y_hat <- predict(fit)
+    df$y_bar <- mean(df$y)
+    df
+  })
+  
+  # --- 1. Main Plot: Data & R-Squared ---
+  output$r2_main_plot <- renderPlot({
+    df <- r2_data()
+    mod <- lm(y ~ x, data = df)
+    r2_val <- summary(mod)$r.squared
+    
+    grid_x <- seq(min(df$x), max(df$x), length.out = 10)
+    pred <- predict(mod, newdata = data.frame(x = grid_x), level = input$cov_alpha)
+    
+    df_p <- data.frame(
+      x = grid_x,
+      fit = pred
+    )
+    
+    ggplot(df, aes(x, y)) +
+      geom_point(size = 3, alpha = 0.7) +
+      geom_line(data = df_p, aes(x = x, y = fit), 
+                color = "firebrick", linewidth = 1, inherit.aes = FALSE) +
+      annotate("label", x = -2.5, y = 12, size = 6,
+               label = paste("R-squared =", round(r2_val, 3)), fill = "white") +
+      coord_cartesian(xlim = c(-3.5, 3.5), ylim = c(-15, 15)) +
+      theme_minimal(base_size = 14)
+  })
+  
+  # --- 2. The Energy Bar ---
+  output$r2_energy_bar <- renderPlot({
+    df <- r2_data()
+    ssr <- sum((df$y_hat - df$y_bar)^2)
+    sse <- sum((df$y - df$y_hat)^2)
+    
+    bar_df <- data.frame(
+      Type = factor(c("Explained (SSR)", "Unexplained (SSE)"), 
+                    levels = c("Unexplained (SSE)", "Explained (SSR)")),
+      Value = c(ssr, sse)
+    )
+    
+    ggplot(bar_df, aes(x = "Total Variation (SST)", y = Value, fill = Type)) +
+      geom_col(width = 0.5, color = "white") +
+      scale_fill_manual(values = c("Unexplained (SSE)" = "firebrick", 
+                                   "Explained (SSR)" = "darkgreen")) +
+      theme_minimal(base_size = 14) +
+      labs(x = NULL, y = "Sum of Squares", fill = NULL) +
+      theme(panel.grid.major.x = element_blank())
+  })
+  
+  # --- 3. Improved Decomposition Plot ---
+  output$r2_decomp_plot <- renderPlot({
+    df <- r2_data()
+    
+    # Transform for faceting
+    sst_df <- transform(df, type = "SST (Total)",      y_start = y_bar, y_end = y)
+    ssr_df <- transform(df, type = "SSR (Regression)", y_start = y_bar, y_end = y_hat)
+    sse_df <- transform(df, type = "SSE (Error)",      y_start = y_hat, y_end = y)
+    
+    df_long <- rbind(sst_df, ssr_df, sse_df)
+    df_long$type <- factor(df_long$type, 
+                           levels = c("SST (Total)", "SSR (Regression)", "SSE (Error)"))
+    
+    ggplot(df_long, aes(x = x, y = y)) +
+      # Faded regression and mean lines for context in all panels
+      geom_hline(aes(yintercept = y_bar), linetype = "dashed", alpha = 0.3) +
+      geom_line(aes(y = y_hat), color = "black", alpha = 0.15) +
+      
+      # Deviation segments: Thicker and colored by type
+      geom_segment(aes(xend = x, y = y_start, yend = y_end, color = type), 
+                   linewidth = 1.2) +
+      
+      # Points are slightly larger but transparent to highlight the segments
+      geom_point(size = 2, alpha = 0.5) +
+      
+      facet_wrap(~type) +
+      scale_color_manual(values = c("SST (Total)" = "black", 
+                                    "SSR (Regression)" = "darkgreen", 
+                                    "SSE (Error)" = "firebrick")) +
+      coord_cartesian(ylim = c(-15, 15)) +
+      labs(subtitle = "Vertical distances represent the individual deviations that are squared and summed.") +
+      theme_minimal(base_size = 14) +
+      theme(
+        legend.position = "none",
+        strip.text = element_text(face = "bold"),
+        panel.spacing = unit(2, "lines") # Add space between facets
+      )
+  })
+}
+
+slr_violation_logic <- function(input, output, session) {
+  # --- Base Data Generation ---
+  base_noise <- reactiveVal(rnorm(50))
+  base_x <- seq(-3, 3, length.out = 50)
+  
+  observeEvent(input$resample_assumptions, { base_noise(rnorm(50)) })
+  
+  # --- Data Synthesis Logic ---
+  processed_data <- reactive({
+    x <- base_x
+    z <- base_noise()
+    
+    # Defaults
+    nl <- 0; het <- 0; df_t <- 30; n_out <- 0; out_sev <- 0
+    
+    if (input$ui_mode == "simple") {
+      if (input$scenario == "nonlinear") nl <- 1.5
+      if (input$scenario == "hetero") het <- 2
+      if (input$scenario == "tails") df_t <- 2
+      if (input$scenario == "outliers") { n_out <- 2; out_sev <- 12 }
+    } else {
+      nl <- input$nl_strength; het <- input$het_strength
+      df_t <- input$tail_df; n_out <- input$outlier_count; out_sev <- input$outlier_dist
+    }
+    
+    # 1. Non-normal noise (t-distribution mapping)
+    # We use the probability integral transform to keep the 'jitter' consistent
+    noise <- qt(pnorm(z), df = df_t)
+    
+    # 2. Heteroscedasticity (noise scales with x)
+    noise <- noise * (1 + het * (x + 3)^(3/2)/4)
+    
+    # 3. Non-linear Mean (adding quadratic term)
+    y <- 1 + 1.5 * x + nl * (x^2) + noise
+    
+    # 4. Outliers (Modify specific points at the end of the vector)
+    if (n_out > 0) {
+      idx <- sample(1:50, n_out)
+      y[idx] <- y[idx] + sample(c(-1, 1), n_out, replace = TRUE) * out_sev
+    }
+    
+    data.frame(x = x, y = y)
+  })
+  
+  # --- Main Plot ---
+  output$assumption_main_plot <- renderPlot({
+    df <- processed_data()
+    
+    mod <- lm(y ~ x, data = df)
+    
+    grid_x <- seq(min(df$x), max(df$x), length.out = 10)
+    pred <- predict(mod, newdata = data.frame(x = grid_x), level = input$cov_alpha)
+    
+    df_p <- data.frame(
+      x = grid_x,
+      fit = pred
+    )
+
+    ggplot(df, aes(x, y)) +
+      geom_point(alpha = 0.7) +
+      geom_line(data = df_p, aes(x = x, y = fit), 
+                color = "firebrick", linewidth = 1, inherit.aes = FALSE) +
+      theme_minimal(base_size = 14) +
+      labs(subtitle = "Linear model (OLS) fitted to the current data scenario.")
+  })
+  
+  # --- Diagnostic Plots ---
+  # Helper to render base R plots in individual ggplot-like cards
+  render_diag <- function(which) {
+    renderPlot({
+      dat <- processed_data()
+      model <- lm(y ~ x, data = dat)
+      par(mar = c(4, 4, 2, 1))
+      plot(model, which = which)
+    })
+  }
+  
+  output$diag_1 <- render_diag(1) # Residuals vs Fitted
+  output$diag_2 <- render_diag(2) # Normal Q-Q
+  output$diag_3 <- render_diag(3) # Scale-Location
+  output$diag_4 <- render_diag(5) # residuals vs leverage
 }
